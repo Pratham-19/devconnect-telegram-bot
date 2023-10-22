@@ -22,7 +22,7 @@ function calculateEndTime(day, shift) {
 }
 
 function isOverlap(startTime1, endTime1, startTime2, endTime2) {
-    return (startTime1 <= endTime2 && startTime2 <= endTime1);
+    return (startTime1 < endTime2 && startTime2 < endTime1);
 }
 
 async function createReminder(message, date, exchange="reminders", routingKey="reminders") {
@@ -81,18 +81,24 @@ const textKeys = {
     SWAPSHIFT: "/swapshift",
 }
 const shifts = {
-    1: "morning (8:30 - 2:30)",
-    2: "evening (2:30 - 8:30)"
+    1: {
+        startTime: "08:30:00",
+        endTime: "12:30:00"
+    },
+    2: {
+        startTime: "13:30:00",
+        endTime: "17:30:00"
+    }
 }
 const days = {
-    13: "1",
-    14: "2",
-    15: "3",
-    16: "4",
-    17: "5",
-    18: "6",
-    19: "7",
-    20: "8"
+    13: 1,
+    14: 2,
+    15: 3,
+    16: 4,
+    17: 5,
+    18: 6,
+    19: 7,
+    20: 8
 }
 
 const menu = {
@@ -203,7 +209,7 @@ client.connect().then(() => {
     const rolesCollection = client.db("database").collection("roles");
     const scheduleCollection = client.db("database").collection("schedule");
     bot.on("callback_query", async (query) => {
-        const action = JSON.parse(query.data);
+        const action = query.data;
         const msg = query.message;
         const user = query.from.username;
         const opts = {
@@ -268,10 +274,10 @@ client.connect().then(() => {
                 await bot.sendMessage(opts.chat_id, `Getting @${user}'s role`);
                 const username = `@${user}`;
                 const foundUser = await rolesCollection.findOne({ username: username });
-                if (user) {
-                await bot.sendMessage(opts.chat_id, `${foundUser.username} is in ${foundUser.team} as ${foundUser.role}`);
+                if (foundUser) {
+                    await bot.sendMessage(opts.chat_id, `${foundUser.username} is in ${foundUser.team} as ${foundUser.role}`);
                 } else {
-                await bot.sendMessage(opts.chat_id, `No role assigned to @${user}`);
+                    await bot.sendMessage(opts.chat_id, `No role assigned to @${user}`);
                 }
                 break;
             default:
@@ -300,14 +306,12 @@ client.connect().then(() => {
         } else if (action === textKeys.GETSHIFT) {
             let msg = text.split(" ");
             const username = msg[1].trim();
-            let shifts = await scheduleCollection.findOne({ username: username });
-            if (shifts.shifts.length !== 0) {
+            let shifts = await scheduleCollection.find({ username: username }).toArray();
+            if (shifts && shifts.length !== 0) {
                 await bot.sendMessage(chat_id, "--- Your Shifts ---");
-                shifts.shifts.forEach(async s => {
-                    let startTime = s.startTime.toLocaleString();
-                    let endTime = s.endTime.toLocaleString();
-                    await bot.sendMessage(chat_id, `Start Time: ${startTime}\nEnd Time: ${endTime}`);
-                });
+                shifts.forEach(async s =>
+                    await bot.sendMessage(chat_id, `Start Time: ${s.startTime.toLocaleString()}\nEnd Time: ${s.endTime.toLocaleString()}`)
+                );
                 await bot.sendMessage(chat_id, "   ---   ");
             } else {
                 await bot.sendMessage(chat_id, `No shifts found for ${username}`);
@@ -325,12 +329,12 @@ client.connect().then(() => {
             let user2Role = await rolesCollection.findOne({ username: user2 });
             if (user1Role && user2Role) {
                 if (user1Role.team === user2Role.team && user1Role.role === user2Role.role) {
-                    let shifts1 = await scheduleCollection.findOne({ username: user1, "shifts.startTime": { $gte: new Date(`2023-11-${day1}T00:00:00`), $lte: new Date(`2023-11-${day1}T23:59:59`) } });
-                    let shifts2 = await scheduleCollection.findOne({ username: user2, "shifts.startTime": { $gte: new Date(`2023-11-${day2}T00:00:00`), $lte: new Date(`2023-11-${day2}T23:59:59`) } });
+                    let shifts1 = await scheduleCollection.find({ username: user1, startTime: { $gte: new Date(`2023-11-${day1}T00:00:00`), $lte: new Date(`2023-11-${day1}T23:59:59`) } });
+                    let shifts2 = await scheduleCollection.find({ username: user2, startTime: { $gte: new Date(`2023-11-${day2}T00:00:00`), $lte: new Date(`2023-11-${day2}T23:59:59`) } });
                     if (shifts1 && shifts2) {
                         // swap shifts
-                        await scheduleCollection.updateOne({ username: user1 }, { $set: { shifts: shifts2[0].shifts } });
-                        await scheduleCollection.updateOne({ username: user2 }, { $set: { shifts: shifts1[0].shifts } });
+                        await scheduleCollection.updateMany({ username: user1, startTime: { $gte: new Date(`2023-11-${day1}T00:00:00`), $lte: new Date(`2023-11-${day1}T23:59:59`) } }, { $set: { username: user2 } });
+                        await scheduleCollection.updateMany({ username: user2, startTime: { $gte: new Date(`2023-11-${day2}T00:00:00`), $lte: new Date(`2023-11-${day2}T23:59:59`) } }, { $set: { username: user1 } });
                         await bot.sendMessage(chat_id, "✅ Shifts swapped successfully");
                     } else {
                         await bot.sendMessage(chat_id, "⚠️ No shift assigned to user on specified day");
@@ -357,35 +361,25 @@ client.connect().then(() => {
                 if (!role) {
                     await bot.sendMessage(chat_id, "⚠️ Assign a role to add shift!");
                 } else {
-                    const shifts = await scheduleCollection.findOne({ username: username });
                     const startTime = calculateStartTime(day, shift);
                     const endTime = calculateEndTime(day, shift);
-                    if (shifts) {
-                        const overlap = shifts.shifts.some(s => isOverlap(s.startTime, s.endTime, startTime, endTime));
-                        if (overlap) {
-                            await bot.sendMessage(chat_id, "⚠️ Shift already exists!");
-                        } else {
-                            // add shift to existing list of shifts for user
-                            await scheduleCollection.updateOne(
-                                { username: username },
-                                { $push: { shifts: { startTime: startTime, endTime: endTime } } }
-                            );
-                            await bot.sendMessage(chat_id, "✅ Added Successfully");
-
-                            // create reminder for shift 1 day before
-                            const reminderMessage = `Hey @${username}, you have an upcoming ${shift} shift at ${startTime.toLocaleString()}`;
-                            const reminderDate = startTime - 86400000;
-                            await createReminder(JSON.stringify({ chat_id: chat_id, username: username, startTime: startTime, message: reminderMessage }), reminderDate);
-
-                            // create reminder for shift 1 hour before
-                            const reminderMessage2 = `Hey @${username}, you have an upcoming ${shift} shift at ${startTime.toLocaleString()}`;
-                            const reminderDate2 = startTime - 3600000;
-                            await createReminder(JSON.stringify({ chat_id: chat_id, username: username, startTime: startTime, message: reminderMessage2 }), reminderDate2);
-                        }
+                    const overlap = await scheduleCollection.findOne({ username: username, startTime: { $lte: endTime }, endTime: { $gte: startTime } });
+                    if (overlap) {
+                        await bot.sendMessage(chat_id, "⚠️ Shift already exists!");
                     } else {
-                        // create new shift for user
-                        await scheduleCollection.insertOne({ username: username, shifts: [{ startTime: startTime, endTime: endTime }] });
+                        // add shift to existing list of shifts for user
+                        await scheduleCollection.insertOne({ username: username, startTime: startTime, endTime: endTime });
                         await bot.sendMessage(chat_id, "✅ Added Successfully");
+
+                        // create reminder for shift 1 day before
+                        const reminderMessage = `Hey @${username}, you have an upcoming ${shift} shift at ${startTime.toLocaleString()}`;
+                        const reminderDate = startTime - 86400000;
+                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, startTime: startTime, message: reminderMessage }), reminderDate);
+
+                        // create reminder for shift 1 hour before
+                        const reminderMessage2 = `Hey @${username}, you have an upcoming ${shift} shift at ${startTime.toLocaleString()}`;
+                        const reminderDate2 = startTime - 3600000;
+                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, startTime: startTime, message: reminderMessage2 }), reminderDate2);
                     }
                 }
             }
@@ -425,26 +419,26 @@ client.connect().then(() => {
             const username = text.split(" ")[1];
             const result = await rolesCollection.deleteOne({ username: username });
             if (result.deletedCount > 0) {
-            await bot.sendMessage(chat_id, `✅ user deleted`);
+                await bot.sendMessage(chat_id, `✅ user deleted`);
             } else {
-            await bot.sendMessage(chat_id, `⚠️ No user found`);
+                await bot.sendMessage(chat_id, `⚠️ No user found`);
             }
         } else if (action === textKeys.DELETESHIFT) {
             let msg = text.split(" ");
-            const username = msg[1].trim();
+            const username = msg[1].trim().split(",")[0].trim();
             const day = parseInt(msg[2].trim());
-            const startDate = new Date(`2023-11-${day}T00:00:00`);
-            const endDate = new Date(`2023-11-${day}T23:59:59`);
-            scheduleCollection.deleteMany({ username: username, "shifts.startTime": { $gte: startDate, $lte: endDate } })
-                .then(async () => {
-                    await bot.sendMessage(chat_id, `✅ shifts for day ${day} deleted`);
-                })
-                .catch(async () => {
-                    await bot.sendMessage(chat_id, `❌ Something went wrong`);
-                });
+            const startDate = new Date(`${day} Nov 2023 00:00:00`)
+            const endDate = new Date(`${day} Nov 2023 23:59:59`)
+            const shiftsForUser = await scheduleCollection.find({ username: username, startTime: { $lte: endDate }, endTime: { $gte: startDate } }).toArray();
+            if (shiftsForUser.length === 0) {
+                await bot.sendMessage(chat_id, `⚠️ No shifts found for ${username}`);
+                return;
+            }
+            await scheduleCollection.deleteMany({ username: username, startTime: { $lte: endDate }, endTime: { $gte: startDate } });
+            await bot.sendMessage(chat_id, `✅ shifts for day ${day} deleted`);
         } else if (action === "/start" || action === "/help") {
             const keyboard = menuKeyboard("");
-            await bot.sendMessage(chat_id, `Hey ${user},\nWhat can I help u with today?`, keyboard)
+            await bot.sendMessage(chat_id, `Hey @${user},\nWhat can I help u with today?`, {reply_markup: keyboard})
         }
 
     });

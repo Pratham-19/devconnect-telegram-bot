@@ -27,11 +27,12 @@ services:
       - mongo-data:/data/db
 
   message-bus:
-    image: rabbitmq:3
+    image: masstransit/rabbitmq:3
     restart: unless-stopped
+    ports:
+      - "15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-    command: rabbitmq-plugins enable rabbitmq_delayed_message_exchange
 
 
 volumes:

@@ -315,8 +315,38 @@ client.connect().then(() => {
                 await bot.sendMessage(chat_id, `No shifts found for ${username}`);
             }
         } else if (action === textKeys.FINDUSERS) {
-            // TODO: find users by shift and your team
-            await bot.sendMessage(chat_id, "Coming soon");
+            let msg = text.split(',');
+
+            if (msg.length !== 3) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+            } else {
+                const username = msg[0].split(" ")[1].trim();
+                const day = days[msg[1].trim()];
+                const shift = shifts[msg[2].trim()];
+                const role = await rolesCollection.findOne({ username: username });
+                if (!role) {
+                    await bot.sendMessage(chat_id, "⚠️ Assign a role to find users!");
+                } else {
+                    const team = role.team;
+                    const startTime = calculateStartTime(day, shift);
+                    const endTime = calculateEndTime(day, shift);
+                    let users = await rolesCollection.find({ team: team }).toArray();
+                    users = users.filter(async u => {
+                        const shifts = await scheduleCollection.find({ username: u.username, startTime: startTime, endTime: endTime }).toArray();
+                        return shifts.length !== 0;
+                    })
+
+                    if (users && users.length !== 0) {
+                        await bot.sendMessage(chat_id, "--- Users ---");
+                        users.forEach(async u =>
+                            await bot.sendMessage(chat_id, `${u.username}`)
+                        );
+                        await bot.sendMessage(chat_id, "   ---   ");
+                    } else {
+                        await bot.sendMessage(chat_id, `No users found for matching criteria`);
+                    }
+                }
+            }
         } else if (action === textKeys.SWAPSHIFT) {
             let msg = text.split(',');
             let user1 = msg[0].split(" ")[1].trim();
@@ -344,8 +374,27 @@ client.connect().then(() => {
                 await bot.sendMessage(chat_id, "⚠️ No role assigned to user");
             }
         } else if (action === textKeys.FINDALLSHIFTUSERS) {
-            // TODO: find all users by shift
-            await bot.sendMessage(chat_id, "Coming soon");
+            let msg = text.split(',');
+
+            if (msg.length !== 2) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+            } else {
+                const day = days[msg[0].split(" ")[1].trim()];
+                const shift = shifts[msg[1].trim()];
+                const startTime = calculateStartTime(day, shift);
+                const endTime = calculateEndTime(day, shift);
+                let users = await scheduleCollection.find({ startTime: startTime, endTime: endTime }).toArray();
+
+                if (users && users.length !== 0) {
+                    await bot.sendMessage(chat_id, "--- Users ---");
+                    users.forEach(async u =>
+                        await bot.sendMessage(chat_id, `${u.username}`)
+                    );
+                    await bot.sendMessage(chat_id, "   ---   ");
+                } else {
+                    await bot.sendMessage(chat_id, `No users found for matching criteria`);
+                }
+            }
         } else if (action === textKeys.ADDSHIFT) {
             let msg = text.split(',');
 

@@ -1,6 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const MongoClient = require('mongodb').MongoClient;
 const amqp = require('amqplib');
+const {ObjectId} = require("mongodb");
 const token = process.env.BOT_TOKEN ?? "";
 
 const bot = new TelegramBot(token, { polling: true });
@@ -21,12 +22,9 @@ function calculateEndTime(day, shift) {
     return date;
 }
 
-function isOverlap(startTime1, endTime1, startTime2, endTime2) {
-    return (startTime1 < endTime2 && startTime2 < endTime1);
-}
-
 async function createReminder(message, date, exchange="reminders", routingKey="reminders") {
-    const delay = date - Date.now();
+    let delay = date - Date.now();
+    // delay = 60000; // 1 min
 
     if (delay < 0) {
         console.log('Date provided is in the past');
@@ -251,7 +249,7 @@ client.connect().then(() => {
                 break;
             case keys.ADDROLE:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to add role\n\n${textKeys.GIVEROLE} username, team, role\n\ne.g ${textKeys.GIVEROLE} @bugbyt, Co-Working Team, Volunteer`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to add role\n\n${textKeys.GIVEROLE} username, team, role, spoken language\n\ne.g ${textKeys.GIVEROLE} @bugbyt, Co-Working Team, Volunteer, English`);
                 break;
             case keys.OTHERROLE:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
@@ -368,33 +366,41 @@ client.connect().then(() => {
                         await bot.sendMessage(chat_id, "⚠️ Shift already exists!");
                     } else {
                         // add shift to existing list of shifts for user
-                        await scheduleCollection.insertOne({ username: username, startTime: startTime, endTime: endTime });
+                        const newShift = await scheduleCollection.insertOne({ username: username, startTime: startTime, endTime: endTime });
                         await bot.sendMessage(chat_id, "✅ Added Successfully");
+                        console.log("Inserted a new shift with id: " + newShift.insertedId)
 
                         // create reminder for shift 1 day before
-                        const reminderMessage = `Hey @${username}, you have an upcoming ${shift} shift at ${startTime.toLocaleString()}`;
+                        const reminderMessage = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
                         const reminderDate = startTime - 86400000;
-                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, startTime: startTime, message: reminderMessage }), reminderDate);
+                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, shiftId: newShift.insertedId, message: reminderMessage }), reminderDate);
 
                         // create reminder for shift 1 hour before
-                        const reminderMessage2 = `Hey @${username}, you have an upcoming ${shift} shift at ${startTime.toLocaleString()}`;
+                        const reminderMessage2 = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
                         const reminderDate2 = startTime - 3600000;
-                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, startTime: startTime, message: reminderMessage2 }), reminderDate2);
+                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, shiftId: newShift.insertedId, message: reminderMessage2 }), reminderDate2);
                     }
                 }
             }
         } else if (action === textKeys.GIVEROLE) {
             let msg = text.split(',');
+
+            if (msg.length !== 4) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+                return;
+            }
+
             const username = msg[0].split(" ")[1].trim();
             const team = msg[1].trim();
             const role = msg[2].trim();
+            const language = msg[3].trim();
 
             const existingUser = await rolesCollection.findOne({ username: username });
             if (existingUser) {
                 await bot.sendMessage(chat_id, "⚠️ Role exists");
                 await bot.sendMessage(chat_id, `${existingUser.username} is in ${existingUser.team} as ${existingUser.role}`);
             } else {
-                const newUser = { username: username, team: team, role: role };
+                const newUser = { username: username, team: team, role: role, language: language };
                 await rolesCollection.insertOne(newUser);
                 await bot.sendMessage(chat_id, "✅ Added Successfully");
             }
@@ -460,17 +466,17 @@ client.connect().then(() => {
 
         await channel.consume(queue.queue, async (message) => {
             const content = JSON.parse(message.content.toString());
-            console.log(`Received a message: ${content}`);
+            console.log(`Received a message: ${message.content.toString()}`);
             const chat_id = content.chat_id;
             const username = content.username;
-            const startTime = content.startTime;
+            const shiftId = content.shiftId;
             const reminderMessage = content.message;
             // check database if user has shift at startTime (so as to avoid sending reminders for shifts that have been deleted)
-            const shift = await scheduleCollection.findOne({ username: username, "shifts.startTime": startTime });
+            const shift = await scheduleCollection.findOne({ _id: new ObjectId(shiftId) });
             if (shift)
                 await bot.sendMessage(chat_id, reminderMessage);
             else
-                console.log(`Reminder not sent - shift not found for ${username} at ${startTime}`);
+                console.log(`Reminder not sent - shift of id ${shiftId} not present in database`);
         }, {
             noAck: true // auto ack
         });

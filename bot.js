@@ -373,12 +373,12 @@ client.connect().then(() => {
                         // create reminder for shift 1 day before
                         const reminderMessage = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
                         const reminderDate = startTime - 86400000;
-                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, shiftId: newShift.insertedId, message: reminderMessage }), reminderDate);
+                        await createReminder(JSON.stringify({ chat_id: chat_id, shiftId: newShift.insertedId, message: reminderMessage }), reminderDate);
 
                         // create reminder for shift 1 hour before
                         const reminderMessage2 = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
                         const reminderDate2 = startTime - 3600000;
-                        await createReminder(JSON.stringify({ chat_id: chat_id, username: username, shiftId: newShift.insertedId, message: reminderMessage2 }), reminderDate2);
+                        await createReminder(JSON.stringify({ chat_id: chat_id, shiftId: newShift.insertedId, message: reminderMessage2 }), reminderDate2);
                     }
                 }
             }
@@ -426,6 +426,9 @@ client.connect().then(() => {
             const result = await rolesCollection.deleteOne({ username: username });
             if (result.deletedCount > 0) {
                 await bot.sendMessage(chat_id, `✅ user deleted`);
+
+                // delete all shifts for user
+                await scheduleCollection.deleteMany({ username: username });
             } else {
                 await bot.sendMessage(chat_id, `⚠️ No user found`);
             }
@@ -468,7 +471,6 @@ client.connect().then(() => {
             const content = JSON.parse(message.content.toString());
             console.log(`Received a message: ${message.content.toString()}`);
             const chat_id = content.chat_id;
-            const username = content.username;
             const shiftId = content.shiftId;
             const reminderMessage = content.message;
             // check database if user has shift at startTime (so as to avoid sending reminders for shifts that have been deleted)

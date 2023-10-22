@@ -1,23 +1,17 @@
 {
-  "name": "devconnect-telegram-bot",
+  "name": "schedule-swapper-telegram-bot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon index.js",
-    "start": "node index.js",
-    "postinstall": "prisma generate"
+    "start": "node bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "pratham-19",
+  "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^5.3.1",
-    "dotenv": "^16.3.1",
+    "amqplib": "^0.10.3",
+    "mongodb": "^6.2.0",
     "node-telegram-bot-api": "^0.63.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1",
-    "prisma": "^5.3.1"
   }
 }

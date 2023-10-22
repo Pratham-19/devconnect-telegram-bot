@@ -1,0 +1,40 @@
+version: '3'
+services:
+  bot:
+    build: .
+    image: devconnect-telegram-bot:latest
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    depends_on:
+      - database
+      - message-bus
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    command:  # install any new packages since last build then start the app
+      - sh
+      - -c
+      - |
+        npm install
+        npm start
+
+  database:
+    image: mongo:7.0-jammy
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  message-bus:
+    image: rabbitmq:3
+    restart: unless-stopped
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    command: rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+
+
+volumes:
+  mongo-data:
+  rabbitmq-data:
+  

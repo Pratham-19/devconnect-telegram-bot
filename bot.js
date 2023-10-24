@@ -24,7 +24,7 @@ function calculateEndTime(day, shift) {
 
 async function createReminder(message, date, exchange="reminders", routingKey="reminders") {
     let delay = date - Date.now();
-    // delay = 60000; // 1 min
+    // delay = 300000; // 5 min
 
     if (delay < 0) {
         console.log('Date provided is in the past');
@@ -290,10 +290,15 @@ client.connect().then(() => {
         const user = msg.from.username;
         const text = msg.text;
 
-        const action = text.split(" ")[0].toLowerCase()
+        const action = !!text? text.split(" ")[0].toLowerCase() : "";
 
         if (action === textKeys.GETROLE) {
-            const username = text.split(" ")[1];
+            let msg = text.split(" ");
+	    if (msg.length !== 2) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+                return;
+	    }
+	    const username = msg[1].trim();
             await bot.sendMessage(chat_id, `Getting ${username}'s role`);
             const user = await rolesCollection.findOne({ username: username });
             if (user) {
@@ -303,6 +308,10 @@ client.connect().then(() => {
             }
         } else if (action === textKeys.GETSHIFT) {
             let msg = text.split(" ");
+	    if (msg.length !== 2) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+                return;
+	    }
             const username = msg[1].trim();
             let shifts = await scheduleCollection.find({ username: username }).toArray();
             if (shifts && shifts.length !== 0) {
@@ -349,6 +358,10 @@ client.connect().then(() => {
             }
         } else if (action === textKeys.SWAPSHIFT) {
             let msg = text.split(',');
+	    if (msg.length !== 4) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+                return;
+	    }
             let user1 = msg[0].split(" ")[1].trim();
             let user2 = msg[1].trim();
             let day1 = parseInt(msg[2].trim());
@@ -455,6 +468,10 @@ client.connect().then(() => {
             }
         } else if (action === textKeys.UPDATEROLE) {
             let msg = text.split(',');
+	    if (msg.length !== 3) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+                return;
+	    }
             const username = msg[0].split(" ")[1].trim();
             const team = msg[1].trim();
             const role = msg[2].trim();
@@ -471,8 +488,13 @@ client.connect().then(() => {
             await bot.sendMessage(chat_id, "⚠️ No user found");
             }
         } else if (action === textKeys.DELETEUSER) {
-            const username = text.split(" ")[1];
-            const result = await rolesCollection.deleteOne({ username: username });
+            let msg = text.split(" ");
+	    if (msg.length !== 2) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+                return;
+	    }
+            const username = msg[1];
+	    const result = await rolesCollection.deleteOne({ username: username });
             if (result.deletedCount > 0) {
                 await bot.sendMessage(chat_id, `✅ user deleted`);
 
@@ -483,7 +505,11 @@ client.connect().then(() => {
             }
         } else if (action === textKeys.DELETESHIFT) {
             let msg = text.split(" ");
-            const username = msg[1].trim().split(",")[0].trim();
+            if (msg.length !== 3) {
+                await bot.sendMessage(chat_id, "❌ Invalid format!");
+                return;
+	    }
+	    const username = msg[1].trim().split(",")[0].trim();
             const day = parseInt(msg[2].trim());
             const startDate = new Date(`${day} Nov 2023 00:00:00`)
             const endDate = new Date(`${day} Nov 2023 23:59:59`)

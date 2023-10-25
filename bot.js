@@ -525,23 +525,29 @@ client.connect().then(() => {
                         });
                         await bot.sendMessage(chat_id, "✅ Added Successfully");
 
-                        // create reminder for commitment 1 day before
+
                         const reminderMessage = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;
-                        const reminderDate = startTime - 86400000;
+
+                        // create reminder for commitment 1 week before
                         await createReminder(JSON.stringify({
                             chat_id: chat_id,
                             commitmentId: newCommitment.insertedId,
                             message: reminderMessage
-                        }), reminderDate);
+                        }), startTime - 604800000);
 
-                        // create reminder for commitment 1 hour before
-                        const reminderMessage2 = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;
-                        const reminderDate2 = startTime - 3600000;
+                        // create reminder for commitment 1 day before
                         await createReminder(JSON.stringify({
                             chat_id: chat_id,
                             commitmentId: newCommitment.insertedId,
-                            message: reminderMessage2
-                        }), reminderDate2);
+                            message: reminderMessage
+                        }), startTime - 86400000);
+
+                        // create reminder for commitment 1 hour before
+                        await createReminder(JSON.stringify({
+                            chat_id: chat_id,
+                            commitmentId: newCommitment.insertedId,
+                            message: reminderMessage
+                        }), startTime - 3600000);
                     }
                 }
             }

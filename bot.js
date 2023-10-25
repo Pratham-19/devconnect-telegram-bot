@@ -12,14 +12,14 @@ const admins = process.env.ADMINS.split(",");
 
 
 // helpers
-function calculateStartTime(day, shift) {
-    const date = new Date(`13 Nov 2023 ${shift.startTime}`);
+function calculateStartTime(day, commitment) {
+    const date = new Date(`13 Nov 2023 ${commitment.startTime}`);
     date.setDate(date.getDate() + day - 1);
     return date;
 }
 
-function calculateEndTime(day, shift) {
-    const date = new Date(`13 Nov 2023 ${shift.endTime}`);
+function calculateEndTime(day, commitment) {
+    const date = new Date(`13 Nov 2023 ${commitment.endTime}`);
     date.setDate(date.getDate() + day - 1);
     return date;
 }
@@ -57,30 +57,30 @@ async function createReminder(message, date, exchange = "reminders", routingKey 
 
 const keys = {
     MYROLE: "myrole",
-    ADDSHIFT: "addShift",
+    ADDCOMMITMENT: "addCommitment",
     OTHERROLE: "otherRoles",
     ADDROLE: "addRole",
     UPDATEROLE: "updateRole",
     DELETEUSER: "delUser",
-    DELETESHIFT: "delShift",
-    FINDSHIFT: "findShift",
+    DELETECOMMITMENT: "delCommitment",
+    FINDCOMMITMENT: "findCommitment",
     FINDUSERS: "findUser",
-    FINDALLSHIFTUSERS: "findShiftUsers",
-    SWAPSHIFT: "swapShift",
+    FINDALLCOMMITMENTUSERS: "findCommitmentUsers",
+    SWAPCOMMITMENT: "swapCommitment",
 }
 const textKeys = {
     GETROLE: "/roleof",
     GIVEROLE: "/give",
     UPDATEROLE: "/updaterole",
     DELETEUSER: "/delrole",
-    ADDSHIFT: "/addshift",
-    DELETESHIFT: "/delshift",
-    GETSHIFT: "/getshift",
+    ADDCOMMITMENT: "/addcommitment",
+    DELETECOMMITMENT: "/delcommitment",
+    GETCOMMITMENT: "/getcommitment",
     FINDUSERS: "/findteamusers",
-    FINDALLSHIFTUSERS: "/findusers",
-    SWAPSHIFT: "/swapshift",
+    FINDALLCOMMITMENTUSERS: "/findusers",
+    SWAPCOMMITMENT: "/swapcommitment",
 }
-const shifts = {
+const commitments = {
     1: {
         startTime: "08:30:00",
         endTime: "12:30:00"
@@ -103,7 +103,7 @@ const days = {
 
 const menu = {
     ROLE: "rolemenu",
-    SHIFTS: "schedulemenu"
+    COMMITMENTS: "schedulemenu"
 }
 
 function menuKeyboard(keyboardName, username) {
@@ -149,30 +149,30 @@ function menuKeyboard(keyboardName, username) {
         return {
             "inline_keyboard": buttons
         };
-    } else if (keyboardName === menu.SHIFTS) {
+    } else if (keyboardName === menu.COMMITMENTS) {
         let buttons = [
             [
                 {
-                    "text": "Add shift",
-                    "callback_data": keys.ADDSHIFT
+                    "text": "Add commitment",
+                    "callback_data": keys.ADDCOMMITMENT
                 }
             ]
                 [
                 {
-                    "text": "Get shifts",
-                    "callback_data": keys.FINDSHIFT
+                    "text": "Get commitments",
+                    "callback_data": keys.FINDCOMMITMENT
                 }
                 ],
             [
                 {
-                    "text": "Find users by shift & your team",
+                    "text": "Find users by commitment & your team",
                     "callback_data": keys.FINDUSERS
                 }
             ],
             [
                 {
-                    "text": "Find users by shifts",
-                    "callback_data": keys.FINDALLSHIFTUSERS
+                    "text": "Find users by commitments",
+                    "callback_data": keys.FINDALLCOMMITMENTUSERS
                 }
             ]
         ];
@@ -181,14 +181,14 @@ function menuKeyboard(keyboardName, username) {
             buttons.push(
                 [
                     {
-                        "text": "Swap shift",
-                        "callback_data": keys.SWAPSHIFT
+                        "text": "Swap commitment",
+                        "callback_data": keys.SWAPCOMMITMENT
                     }
                 ],
                 [
                     {
-                        "text": "Delete shift",
-                        "callback_data": keys.DELETESHIFT
+                        "text": "Delete commitment",
+                        "callback_data": keys.DELETECOMMITMENT
                     }
                 ]
             );
@@ -209,7 +209,7 @@ function menuKeyboard(keyboardName, username) {
                 [
                     {
                         "text": "Schedule",
-                        "callback_data": menu.SHIFTS
+                        "callback_data": menu.COMMITMENTS
                     }
                 ],
             ]
@@ -238,40 +238,40 @@ client.connect().then(() => {
                 keyboard = menuKeyboard(menu.ROLE);
                 await bot.sendMessage(opts.chat_id, 'What role function do you want to use?', {reply_markup: keyboard});
                 break;
-            case menu.SHIFTS:
+            case menu.COMMITMENTS:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                keyboard = menuKeyboard(menu.SHIFTS);
+                keyboard = menuKeyboard(menu.COMMITMENTS);
                 await bot.sendMessage(opts.chat_id, 'What schedule function do you want to use?', {reply_markup: keyboard});
                 break;
-            case keys.DELETESHIFT:
+            case keys.DELETECOMMITMENT:
                 if (!admins.includes(user)) {
                     await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                     await bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
                     return;
                 }
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to delete shift\n\n${textKeys.DELETESHIFT} username, day(13-20)\n\ne.g ${textKeys.DELETESHIFT} @bugbyt, 14`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to delete commitment\n\n${textKeys.DELETECOMMITMENT} username, day(13-20)\n\ne.g ${textKeys.DELETECOMMITMENT} @bugbyt, 14`);
                 break;
-            case keys.SWAPSHIFT:
+            case keys.SWAPCOMMITMENT:
                 if (!admins.includes(user)) {
                     await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                     await bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
                     return;
                 }
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to swap shift with teammate\n\n${textKeys.SWAPSHIFT} user1, user2, day1(13-20), day2(13-20)\n\ne.g ${textKeys.SWAPSHIFT} @bugbyt, @kokocares, 14, 16\n${textKeys.SWAPSHIFT} @bugbyt, @kokocares, 14, 14 (for same day swap)`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to swap commitment with teammate\n\n${textKeys.SWAPCOMMITMENT} user1, user2, day1(13-20), day2(13-20)\n\ne.g ${textKeys.SWAPCOMMITMENT} @bugbyt, @kokocares, 14, 16\n${textKeys.SWAPCOMMITMENT} @bugbyt, @kokocares, 14, 14 (for same day swap)`);
                 break;
             case keys.FINDUSERS:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to find users of your team on particular shift,\n1 - morning shift,\n2 - afternoon shift\n\n${textKeys.FINDUSERS} username, day(13-20), shift(1,2)\n\ne.g ${textKeys.FINDUSERS} @bugbyt, 14, 2`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to find users of your team on particular commitment,\n1 - morning commitment,\n2 - afternoon commitment\n\n${textKeys.FINDUSERS} username, day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDUSERS} @bugbyt, 14, 2`);
                 break;
-            case keys.FINDALLSHIFTUSERS:
+            case keys.FINDALLCOMMITMENTUSERS:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to find users by shift,\n1 - morning shift,\n2 - afternoon shift\n\n${textKeys.FINDALLSHIFTUSERS} day(13-20), shift(1,2)\n\ne.g ${textKeys.FINDALLSHIFTUSERS} 14, 2`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to find users by commitment,\n1 - morning commitment,\n2 - afternoon commitment\n\n${textKeys.FINDALLCOMMITMENTUSERS} day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDALLCOMMITMENTUSERS} 14, 2`);
                 break;
-            case keys.FINDSHIFT:
+            case keys.FINDCOMMITMENT:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to find shifts\n\n${textKeys.GETSHIFT} username\n\ne.g ${textKeys.GETSHIFT} @bugbyt`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to find commitments\n\n${textKeys.GETCOMMITMENT} username\n\ne.g ${textKeys.GETCOMMITMENT} @bugbyt`);
                 break;
             case keys.ADDROLE:
                 if (!admins.includes(user)) {
@@ -304,9 +304,9 @@ client.connect().then(() => {
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 await bot.sendMessage(opts.chat_id, `Use the following command to delete role\n\n${textKeys.DELETEUSER} username\n\ne.g ${textKeys.DELETEUSER} @bugbyt`);
                 break;
-            case keys.ADDSHIFT:
+            case keys.ADDCOMMITMENT:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to add shift,\n1 - morning shift,\n2 - afternoon shift\n\n${textKeys.ADDSHIFT} username, day(13-20), Shift (1,2)\n\ne.g ${textKeys.ADDSHIFT} @bugbyt, 15, 2 `);
+                await bot.sendMessage(opts.chat_id, `Use the following command to add commitment,\n1 - morning commitment,\n2 - afternoon commitment\n\n${textKeys.ADDCOMMITMENT} username, day(13-20), Commitment (1,2)\n\ne.g ${textKeys.ADDCOMMITMENT} @bugbyt, 15, 2 `);
                 break;
             case keys.MYROLE:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
@@ -347,22 +347,22 @@ client.connect().then(() => {
             } else {
                 await bot.sendMessage(chat_id, `No role assigned to ${username}`);
             }
-        } else if (action === textKeys.GETSHIFT) {
+        } else if (action === textKeys.GETCOMMITMENT) {
             let msg = text.split(" ");
             if (msg.length !== 2) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
                 return;
             }
             const username = msg[1].trim();
-            let shifts = await scheduleCollection.find({username: username}).toArray();
-            if (shifts && shifts.length !== 0) {
-                await bot.sendMessage(chat_id, "--- Your Shifts ---");
-                shifts.forEach(async s =>
+            let commitments = await scheduleCollection.find({username: username}).toArray();
+            if (commitments && commitments.length !== 0) {
+                await bot.sendMessage(chat_id, "--- Your Commitments ---");
+                commitments.forEach(async s =>
                     await bot.sendMessage(chat_id, `Start Time: ${s.startTime.toLocaleString()}\nEnd Time: ${s.endTime.toLocaleString()}`)
                 );
                 await bot.sendMessage(chat_id, "   ---   ");
             } else {
-                await bot.sendMessage(chat_id, `No shifts found for ${username}`);
+                await bot.sendMessage(chat_id, `No commitments found for ${username}`);
             }
         } else if (action === textKeys.FINDUSERS) {
             let msg = text.split(',');
@@ -372,22 +372,22 @@ client.connect().then(() => {
             } else {
                 const username = msg[0].split(" ")[1].trim();
                 const day = days[msg[1].trim()];
-                const shift = shifts[msg[2].trim()];
+                const commitment = commitments[msg[2].trim()];
                 const role = await rolesCollection.findOne({username: username});
                 if (!role) {
                     await bot.sendMessage(chat_id, "⚠️ Assign a role to find users!");
                 } else {
                     const team = role.team;
-                    const startTime = calculateStartTime(day, shift);
-                    const endTime = calculateEndTime(day, shift);
+                    const startTime = calculateStartTime(day, commitment);
+                    const endTime = calculateEndTime(day, commitment);
                     let users = await rolesCollection.find({team: team}).toArray();
                     users = users.filter(async u => {
-                        const shifts = await scheduleCollection.find({
+                        const commitments = await scheduleCollection.find({
                             username: u.username,
                             startTime: startTime,
                             endTime: endTime
                         }).toArray();
-                        return shifts.length !== 0;
+                        return commitments.length !== 0;
                     })
 
                     if (users && users.length !== 0) {
@@ -401,7 +401,7 @@ client.connect().then(() => {
                     }
                 }
             }
-        } else if (action === textKeys.SWAPSHIFT) {
+        } else if (action === textKeys.SWAPCOMMITMENT) {
             if (!admins.includes(user)) {
                 await bot.sendMessage(chat_id, "🚫 You do not have permission to perform this action");
                 return;
@@ -420,22 +420,22 @@ client.connect().then(() => {
             let user2Role = await rolesCollection.findOne({username: user2});
             if (user1Role && user2Role) {
                 if (user1Role.team === user2Role.team && user1Role.role === user2Role.role) {
-                    let shifts1 = await scheduleCollection.find({
+                    let commitments1 = await scheduleCollection.find({
                         username: user1,
                         startTime: {
                             $gte: new Date(`2023-11-${day1}T00:00:00`),
                             $lte: new Date(`2023-11-${day1}T23:59:59`)
                         }
                     });
-                    let shifts2 = await scheduleCollection.find({
+                    let commitments2 = await scheduleCollection.find({
                         username: user2,
                         startTime: {
                             $gte: new Date(`2023-11-${day2}T00:00:00`),
                             $lte: new Date(`2023-11-${day2}T23:59:59`)
                         }
                     });
-                    if (shifts1 && shifts2) {
-                        // swap shifts
+                    if (commitments1 && commitments2) {
+                        // swap commitments
                         await scheduleCollection.updateMany({
                             username: user1,
                             startTime: {
@@ -450,9 +450,9 @@ client.connect().then(() => {
                                 $lte: new Date(`2023-11-${day2}T23:59:59`)
                             }
                         }, {$set: {username: user1}});
-                        await bot.sendMessage(chat_id, "✅ Shifts swapped successfully");
+                        await bot.sendMessage(chat_id, "✅ Commitments swapped successfully");
                     } else {
-                        await bot.sendMessage(chat_id, "⚠️ No shift assigned to user on specified day");
+                        await bot.sendMessage(chat_id, "⚠️ No commitment assigned to user on specified day");
                     }
                 } else {
                     await bot.sendMessage(chat_id, "Can't swap with different team/role user");
@@ -460,16 +460,16 @@ client.connect().then(() => {
             } else {
                 await bot.sendMessage(chat_id, "⚠️ No role assigned to user");
             }
-        } else if (action === textKeys.FINDALLSHIFTUSERS) {
+        } else if (action === textKeys.FINDALLCOMMITMENTUSERS) {
             let msg = text.split(',');
 
             if (msg.length !== 2) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
             } else {
                 const day = days[msg[0].split(" ")[1].trim()];
-                const shift = shifts[msg[1].trim()];
-                const startTime = calculateStartTime(day, shift);
-                const endTime = calculateEndTime(day, shift);
+                const commitment = commitments[msg[1].trim()];
+                const startTime = calculateStartTime(day, commitment);
+                const endTime = calculateEndTime(day, commitment);
                 let users = await scheduleCollection.find({startTime: startTime, endTime: endTime}).toArray();
 
                 if (users && users.length !== 0) {
@@ -482,7 +482,7 @@ client.connect().then(() => {
                     await bot.sendMessage(chat_id, `No users found for matching criteria`);
                 }
             }
-        } else if (action === textKeys.ADDSHIFT) {
+        } else if (action === textKeys.ADDCOMMITMENT) {
             let msg = text.split(',');
 
             if (msg.length !== 3) {
@@ -490,45 +490,45 @@ client.connect().then(() => {
             } else {
                 const username = msg[0].split(" ")[1].trim();
                 const day = days[msg[1].trim()];
-                const shift = shifts[msg[2].trim()];
+                const commitment = commitments[msg[2].trim()];
                 const role = await rolesCollection.findOne({username: username});
                 if (!role) {
-                    await bot.sendMessage(chat_id, "⚠️ Assign a role to add shift!");
+                    await bot.sendMessage(chat_id, "⚠️ Assign a role to add commitment!");
                 } else {
-                    const startTime = calculateStartTime(day, shift);
-                    const endTime = calculateEndTime(day, shift);
+                    const startTime = calculateStartTime(day, commitment);
+                    const endTime = calculateEndTime(day, commitment);
                     const overlap = await scheduleCollection.findOne({
                         username: username,
                         startTime: {$lte: endTime},
                         endTime: {$gte: startTime}
                     });
                     if (overlap) {
-                        await bot.sendMessage(chat_id, "⚠️ Shift already exists!");
+                        await bot.sendMessage(chat_id, "⚠️ Commitment already exists!");
                     } else {
-                        // add shift to existing list of shifts for user
-                        const newShift = await scheduleCollection.insertOne({
+                        // add commitment to existing list of commitments for user
+                        const newCommitment = await scheduleCollection.insertOne({
                             username: username,
                             startTime: startTime,
                             endTime: endTime
                         });
                         await bot.sendMessage(chat_id, "✅ Added Successfully");
-                        console.log("Inserted a new shift with id: " + newShift.insertedId)
+                        console.log("Inserted a new commitment with id: " + newCommitment.insertedId)
 
-                        // create reminder for shift 1 day before
-                        const reminderMessage = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
+                        // create reminder for commitment 1 day before
+                        const reminderMessage = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;
                         const reminderDate = startTime - 86400000;
                         await createReminder(JSON.stringify({
                             chat_id: chat_id,
-                            shiftId: newShift.insertedId,
+                            commitmentId: newCommitment.insertedId,
                             message: reminderMessage
                         }), reminderDate);
 
-                        // create reminder for shift 1 hour before
-                        const reminderMessage2 = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
+                        // create reminder for commitment 1 hour before
+                        const reminderMessage2 = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;
                         const reminderDate2 = startTime - 3600000;
                         await createReminder(JSON.stringify({
                             chat_id: chat_id,
-                            shiftId: newShift.insertedId,
+                            commitmentId: newCommitment.insertedId,
                             message: reminderMessage2
                         }), reminderDate2);
                     }
@@ -603,12 +603,12 @@ client.connect().then(() => {
             if (result.deletedCount > 0) {
                 await bot.sendMessage(chat_id, `✅ user deleted`);
 
-                // delete all shifts for user
+                // delete all commitments for user
                 await scheduleCollection.deleteMany({username: username});
             } else {
                 await bot.sendMessage(chat_id, `⚠️ No user found`);
             }
-        } else if (action === textKeys.DELETESHIFT) {
+        } else if (action === textKeys.DELETECOMMITMENT) {
             if (!admins.includes(user)) {
                 await bot.sendMessage(chat_id, "🚫 You do not have permission to perform this action");
                 return;
@@ -623,13 +623,13 @@ client.connect().then(() => {
             const day = parseInt(msg[2].trim());
             const startDate = new Date(`${day} Nov 2023 00:00:00`)
             const endDate = new Date(`${day} Nov 2023 23:59:59`)
-            const shiftsForUser = await scheduleCollection.find({
+            const commitmentsForUser = await scheduleCollection.find({
                 username: username,
                 startTime: {$lte: endDate},
                 endTime: {$gte: startDate}
             }).toArray();
-            if (shiftsForUser.length === 0) {
-                await bot.sendMessage(chat_id, `⚠️ No shifts found for ${username}`);
+            if (commitmentsForUser.length === 0) {
+                await bot.sendMessage(chat_id, `⚠️ No commitments found for ${username}`);
                 return;
             }
             await scheduleCollection.deleteMany({
@@ -637,7 +637,7 @@ client.connect().then(() => {
                 startTime: {$lte: endDate},
                 endTime: {$gte: startDate}
             });
-            await bot.sendMessage(chat_id, `✅ shifts for day ${day} deleted`);
+            await bot.sendMessage(chat_id, `✅ commitments for day ${day} deleted`);
         } else if (action === "/start" || action === "/help") {
             const keyboard = menuKeyboard("");
             await bot.sendMessage(chat_id, `Hey @${user},\nWhat can I help u with today?`, {reply_markup: keyboard})
@@ -664,14 +664,14 @@ client.connect().then(() => {
             const content = JSON.parse(message.content.toString());
             console.log(`Received a message: ${message.content.toString()}`);
             const chat_id = content.chat_id;
-            const shiftId = content.shiftId;
+            const commitmentId = content.commitmentId;
             const reminderMessage = content.message;
-            // check database if user has shift at startTime (so as to avoid sending reminders for shifts that have been deleted)
-            const shift = await scheduleCollection.findOne({_id: new ObjectId(shiftId)});
-            if (shift)
+            // check database if user has commitment at startTime (so as to avoid sending reminders for commitments that have been deleted)
+            const commitment = await scheduleCollection.findOne({_id: new ObjectId(commitmentId)});
+            if (commitment)
                 await bot.sendMessage(chat_id, reminderMessage);
             else
-                console.log(`Reminder not sent - shift of id ${shiftId} not present in database`);
+                console.log(`Reminder not sent - commitment of id ${commitmentId} not present in database`);
         }, {
             noAck: true // auto ack
         });

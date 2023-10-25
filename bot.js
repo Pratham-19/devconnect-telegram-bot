@@ -4,9 +4,11 @@ const amqp = require('amqplib');
 const {ObjectId} = require("mongodb");
 const token = process.env.BOT_TOKEN ?? "";
 
-const bot = new TelegramBot(token, { polling: true });
+const bot = new TelegramBot(token, {polling: true});
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri, {});
+
+const admins = process.env.ADMINS.split(",");
 
 
 // helpers
@@ -22,7 +24,7 @@ function calculateEndTime(day, shift) {
     return date;
 }
 
-async function createReminder(message, date, exchange="reminders", routingKey="reminders") {
+async function createReminder(message, date, exchange = "reminders", routingKey = "reminders") {
     let delay = date - Date.now();
     // delay = 300000; // 5 min
 
@@ -35,13 +37,13 @@ async function createReminder(message, date, exchange="reminders", routingKey="r
     const channel = await connection.createChannel();
 
     await channel.assertExchange(exchange, 'x-delayed-message', {
-        arguments: { 'x-delayed-type': 'direct' }
+        arguments: {'x-delayed-type': 'direct'}
     });
 
     const messageBuffer = Buffer.from(message);
 
     await channel.publish(exchange, routingKey, messageBuffer, {
-        headers: { 'x-delay': delay }
+        headers: {'x-delay': delay}
     });
 
     console.log(`Sent a message with a delay of ${delay} ms`);
@@ -104,22 +106,25 @@ const menu = {
     SHIFTS: "schedulemenu"
 }
 
-function menuKeyboard(name) {
-    if (name === menu.ROLE) {
-        return {
-            "inline_keyboard": [
-                [
-                    {
-                        "text": "Check My Role",
-                        "callback_data": keys.MYROLE
-                    }
-                ],
-                [
-                    {
-                        "text": "Check Other's Role",
-                        "callback_data": keys.OTHERROLE
-                    }
-                ],
+function menuKeyboard(keyboardName, username) {
+    if (keyboardName === menu.ROLE) {
+        let buttons = [
+            [
+                {
+                    "text": "Check My Role",
+                    "callback_data": keys.MYROLE
+                }
+            ],
+            [
+                {
+                    "text": "Check Other's Role",
+                    "callback_data": keys.OTHERROLE
+                }
+            ]
+        ];
+
+        if (admins.includes(username)) {
+            buttons.push(
                 [
                     {
                         "text": "Add Role",
@@ -138,15 +143,46 @@ function menuKeyboard(name) {
                         "callback_data": keys.DELETEUSER
                     }
                 ],
-            ]
-        };
-    } else if (name === menu.SHIFTS) {
+            );
+        }
+
         return {
-            "inline_keyboard": [
+            "inline_keyboard": buttons
+        };
+    } else if (keyboardName === menu.SHIFTS) {
+        let buttons = [
+            [
+                {
+                    "text": "Add shift",
+                    "callback_data": keys.ADDSHIFT
+                }
+            ]
+                [
+                {
+                    "text": "Get shifts",
+                    "callback_data": keys.FINDSHIFT
+                }
+                ],
+            [
+                {
+                    "text": "Find users by shift & your team",
+                    "callback_data": keys.FINDUSERS
+                }
+            ],
+            [
+                {
+                    "text": "Find users by shifts",
+                    "callback_data": keys.FINDALLSHIFTUSERS
+                }
+            ]
+        ];
+
+        if (admins.includes(username)) {
+            buttons.push(
                 [
                     {
-                        "text": "Add shift",
-                        "callback_data": keys.ADDSHIFT
+                        "text": "Swap shift",
+                        "callback_data": keys.SWAPSHIFT
                     }
                 ],
                 [
@@ -154,32 +190,12 @@ function menuKeyboard(name) {
                         "text": "Delete shift",
                         "callback_data": keys.DELETESHIFT
                     }
-                ],
-                [
-                    {
-                        "text": "Get shifts",
-                        "callback_data": keys.FINDSHIFT
-                    }
-                ],
-                [
-                    {
-                        "text": "Find users by shift & your team",
-                        "callback_data": keys.FINDUSERS
-                    }
-                ],
-                [
-                    {
-                        "text": "Find users by shifts",
-                        "callback_data": keys.FINDALLSHIFTUSERS
-                    }
-                ],
-                [
-                    {
-                        "text": "Swap shift with your teammate",
-                        "callback_data": keys.SWAPSHIFT
-                    }
-                ],
-            ]
+                ]
+            );
+        }
+
+        return {
+            "inline_keyboard": buttons
         }
     } else {
         return {
@@ -228,10 +244,20 @@ client.connect().then(() => {
                 await bot.sendMessage(opts.chat_id, 'What schedule function do you want to use?', {reply_markup: keyboard});
                 break;
             case keys.DELETESHIFT:
+                if (!admins.includes(user)) {
+                    await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
+                    await bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
+                    return;
+                }
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 await bot.sendMessage(opts.chat_id, `Use the following command to delete shift\n\n${textKeys.DELETESHIFT} username, day(13-20)\n\ne.g ${textKeys.DELETESHIFT} @bugbyt, 14`);
                 break;
             case keys.SWAPSHIFT:
+                if (!admins.includes(user)) {
+                    await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
+                    await bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
+                    return;
+                }
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 await bot.sendMessage(opts.chat_id, `Use the following command to swap shift with teammate\n\n${textKeys.SWAPSHIFT} user1, user2, day1(13-20), day2(13-20)\n\ne.g ${textKeys.SWAPSHIFT} @bugbyt, @kokocares, 14, 16\n${textKeys.SWAPSHIFT} @bugbyt, @kokocares, 14, 14 (for same day swap)`);
                 break;
@@ -248,6 +274,11 @@ client.connect().then(() => {
                 await bot.sendMessage(opts.chat_id, `Use the following command to find shifts\n\n${textKeys.GETSHIFT} username\n\ne.g ${textKeys.GETSHIFT} @bugbyt`);
                 break;
             case keys.ADDROLE:
+                if (!admins.includes(user)) {
+                    await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
+                    await bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
+                    return;
+                }
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 await bot.sendMessage(opts.chat_id, `Use the following command to add role\n\n${textKeys.GIVEROLE} username, team, role, spoken language\n\ne.g ${textKeys.GIVEROLE} @bugbyt, Co-Working Team, Volunteer, English`);
                 break;
@@ -256,10 +287,20 @@ client.connect().then(() => {
                 await bot.sendMessage(opts.chat_id, `Use the following command to get other's role\n\n${textKeys.GETROLE} username\n\ne.g ${textKeys.GETROLE} @bugbyt`);
                 break;
             case keys.UPDATEROLE:
+                if (!admins.includes(user)) {
+                    await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
+                    await bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
+                    return;
+                }
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 await bot.sendMessage(opts.chat_id, `Use the following command to update role\n\n${textKeys.UPDATEROLE} username, team, role\n\ne.g ${textKeys.UPDATEROLE} @bugbyt, Co-Working Team, Volunteer`);
                 break;
             case keys.DELETEUSER:
+                if (!admins.includes(user)) {
+                    await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
+                    await bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
+                    return;
+                }
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 await bot.sendMessage(opts.chat_id, `Use the following command to delete role\n\n${textKeys.DELETEUSER} username\n\ne.g ${textKeys.DELETEUSER} @bugbyt`);
                 break;
@@ -268,10 +309,10 @@ client.connect().then(() => {
                 await bot.sendMessage(opts.chat_id, `Use the following command to add shift,\n1 - morning shift,\n2 - afternoon shift\n\n${textKeys.ADDSHIFT} username, day(13-20), Shift (1,2)\n\ne.g ${textKeys.ADDSHIFT} @bugbyt, 15, 2 `);
                 break;
             case keys.MYROLE:
-                await bot.editMessageReplyMarkup({ inline_keyboard: [] }, opts);
+                await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 await bot.sendMessage(opts.chat_id, `Getting @${user}'s role`);
                 const username = `@${user}`;
-                const foundUser = await rolesCollection.findOne({ username: username });
+                const foundUser = await rolesCollection.findOne({username: username});
                 if (foundUser) {
                     await bot.sendMessage(opts.chat_id, `${foundUser.username} is in ${foundUser.team} as ${foundUser.role}`);
                 } else {
@@ -290,17 +331,17 @@ client.connect().then(() => {
         const user = msg.from.username;
         const text = msg.text;
 
-        const action = !!text? text.split(" ")[0].toLowerCase() : "";
+        const action = !!text ? text.split(" ")[0].toLowerCase() : "";
 
         if (action === textKeys.GETROLE) {
             let msg = text.split(" ");
-	    if (msg.length !== 2) {
+            if (msg.length !== 2) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
                 return;
-	    }
-	    const username = msg[1].trim();
+            }
+            const username = msg[1].trim();
             await bot.sendMessage(chat_id, `Getting ${username}'s role`);
-            const user = await rolesCollection.findOne({ username: username });
+            const user = await rolesCollection.findOne({username: username});
             if (user) {
                 await bot.sendMessage(chat_id, `${user.username} is in ${user.team} as ${user.role}`);
             } else {
@@ -308,12 +349,12 @@ client.connect().then(() => {
             }
         } else if (action === textKeys.GETSHIFT) {
             let msg = text.split(" ");
-	    if (msg.length !== 2) {
+            if (msg.length !== 2) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
                 return;
-	    }
+            }
             const username = msg[1].trim();
-            let shifts = await scheduleCollection.find({ username: username }).toArray();
+            let shifts = await scheduleCollection.find({username: username}).toArray();
             if (shifts && shifts.length !== 0) {
                 await bot.sendMessage(chat_id, "--- Your Shifts ---");
                 shifts.forEach(async s =>
@@ -332,16 +373,20 @@ client.connect().then(() => {
                 const username = msg[0].split(" ")[1].trim();
                 const day = days[msg[1].trim()];
                 const shift = shifts[msg[2].trim()];
-                const role = await rolesCollection.findOne({ username: username });
+                const role = await rolesCollection.findOne({username: username});
                 if (!role) {
                     await bot.sendMessage(chat_id, "⚠️ Assign a role to find users!");
                 } else {
                     const team = role.team;
                     const startTime = calculateStartTime(day, shift);
                     const endTime = calculateEndTime(day, shift);
-                    let users = await rolesCollection.find({ team: team }).toArray();
+                    let users = await rolesCollection.find({team: team}).toArray();
                     users = users.filter(async u => {
-                        const shifts = await scheduleCollection.find({ username: u.username, startTime: startTime, endTime: endTime }).toArray();
+                        const shifts = await scheduleCollection.find({
+                            username: u.username,
+                            startTime: startTime,
+                            endTime: endTime
+                        }).toArray();
                         return shifts.length !== 0;
                     })
 
@@ -357,25 +402,54 @@ client.connect().then(() => {
                 }
             }
         } else if (action === textKeys.SWAPSHIFT) {
+            if (!admins.includes(user)) {
+                await bot.sendMessage(chat_id, "🚫 You do not have permission to perform this action");
+                return;
+            }
+
             let msg = text.split(',');
-	    if (msg.length !== 4) {
+            if (msg.length !== 4) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
                 return;
-	    }
+            }
             let user1 = msg[0].split(" ")[1].trim();
             let user2 = msg[1].trim();
             let day1 = parseInt(msg[2].trim());
             let day2 = parseInt(msg[3].trim());
-            let user1Role = await rolesCollection.findOne({ username: user1 });
-            let user2Role = await rolesCollection.findOne({ username: user2 });
+            let user1Role = await rolesCollection.findOne({username: user1});
+            let user2Role = await rolesCollection.findOne({username: user2});
             if (user1Role && user2Role) {
                 if (user1Role.team === user2Role.team && user1Role.role === user2Role.role) {
-                    let shifts1 = await scheduleCollection.find({ username: user1, startTime: { $gte: new Date(`2023-11-${day1}T00:00:00`), $lte: new Date(`2023-11-${day1}T23:59:59`) } });
-                    let shifts2 = await scheduleCollection.find({ username: user2, startTime: { $gte: new Date(`2023-11-${day2}T00:00:00`), $lte: new Date(`2023-11-${day2}T23:59:59`) } });
+                    let shifts1 = await scheduleCollection.find({
+                        username: user1,
+                        startTime: {
+                            $gte: new Date(`2023-11-${day1}T00:00:00`),
+                            $lte: new Date(`2023-11-${day1}T23:59:59`)
+                        }
+                    });
+                    let shifts2 = await scheduleCollection.find({
+                        username: user2,
+                        startTime: {
+                            $gte: new Date(`2023-11-${day2}T00:00:00`),
+                            $lte: new Date(`2023-11-${day2}T23:59:59`)
+                        }
+                    });
                     if (shifts1 && shifts2) {
                         // swap shifts
-                        await scheduleCollection.updateMany({ username: user1, startTime: { $gte: new Date(`2023-11-${day1}T00:00:00`), $lte: new Date(`2023-11-${day1}T23:59:59`) } }, { $set: { username: user2 } });
-                        await scheduleCollection.updateMany({ username: user2, startTime: { $gte: new Date(`2023-11-${day2}T00:00:00`), $lte: new Date(`2023-11-${day2}T23:59:59`) } }, { $set: { username: user1 } });
+                        await scheduleCollection.updateMany({
+                            username: user1,
+                            startTime: {
+                                $gte: new Date(`2023-11-${day1}T00:00:00`),
+                                $lte: new Date(`2023-11-${day1}T23:59:59`)
+                            }
+                        }, {$set: {username: user2}});
+                        await scheduleCollection.updateMany({
+                            username: user2,
+                            startTime: {
+                                $gte: new Date(`2023-11-${day2}T00:00:00`),
+                                $lte: new Date(`2023-11-${day2}T23:59:59`)
+                            }
+                        }, {$set: {username: user1}});
                         await bot.sendMessage(chat_id, "✅ Shifts swapped successfully");
                     } else {
                         await bot.sendMessage(chat_id, "⚠️ No shift assigned to user on specified day");
@@ -396,7 +470,7 @@ client.connect().then(() => {
                 const shift = shifts[msg[1].trim()];
                 const startTime = calculateStartTime(day, shift);
                 const endTime = calculateEndTime(day, shift);
-                let users = await scheduleCollection.find({ startTime: startTime, endTime: endTime }).toArray();
+                let users = await scheduleCollection.find({startTime: startTime, endTime: endTime}).toArray();
 
                 if (users && users.length !== 0) {
                     await bot.sendMessage(chat_id, "--- Users ---");
@@ -417,34 +491,55 @@ client.connect().then(() => {
                 const username = msg[0].split(" ")[1].trim();
                 const day = days[msg[1].trim()];
                 const shift = shifts[msg[2].trim()];
-                const role = await rolesCollection.findOne({ username: username });
+                const role = await rolesCollection.findOne({username: username});
                 if (!role) {
                     await bot.sendMessage(chat_id, "⚠️ Assign a role to add shift!");
                 } else {
                     const startTime = calculateStartTime(day, shift);
                     const endTime = calculateEndTime(day, shift);
-                    const overlap = await scheduleCollection.findOne({ username: username, startTime: { $lte: endTime }, endTime: { $gte: startTime } });
+                    const overlap = await scheduleCollection.findOne({
+                        username: username,
+                        startTime: {$lte: endTime},
+                        endTime: {$gte: startTime}
+                    });
                     if (overlap) {
                         await bot.sendMessage(chat_id, "⚠️ Shift already exists!");
                     } else {
                         // add shift to existing list of shifts for user
-                        const newShift = await scheduleCollection.insertOne({ username: username, startTime: startTime, endTime: endTime });
+                        const newShift = await scheduleCollection.insertOne({
+                            username: username,
+                            startTime: startTime,
+                            endTime: endTime
+                        });
                         await bot.sendMessage(chat_id, "✅ Added Successfully");
                         console.log("Inserted a new shift with id: " + newShift.insertedId)
 
                         // create reminder for shift 1 day before
                         const reminderMessage = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
                         const reminderDate = startTime - 86400000;
-                        await createReminder(JSON.stringify({ chat_id: chat_id, shiftId: newShift.insertedId, message: reminderMessage }), reminderDate);
+                        await createReminder(JSON.stringify({
+                            chat_id: chat_id,
+                            shiftId: newShift.insertedId,
+                            message: reminderMessage
+                        }), reminderDate);
 
                         // create reminder for shift 1 hour before
                         const reminderMessage2 = `Hey ${username}, you have an upcoming shift at ${startTime.toLocaleString()}`;
                         const reminderDate2 = startTime - 3600000;
-                        await createReminder(JSON.stringify({ chat_id: chat_id, shiftId: newShift.insertedId, message: reminderMessage2 }), reminderDate2);
+                        await createReminder(JSON.stringify({
+                            chat_id: chat_id,
+                            shiftId: newShift.insertedId,
+                            message: reminderMessage2
+                        }), reminderDate2);
                     }
                 }
             }
         } else if (action === textKeys.GIVEROLE) {
+            if (!admins.includes(user)) {
+                await bot.sendMessage(chat_id, "🚫 You do not have permission to perform this action");
+                return;
+            }
+
             let msg = text.split(',');
 
             if (msg.length !== 4) {
@@ -457,68 +552,91 @@ client.connect().then(() => {
             const role = msg[2].trim();
             const language = msg[3].trim();
 
-            const existingUser = await rolesCollection.findOne({ username: username });
+            const existingUser = await rolesCollection.findOne({username: username});
             if (existingUser) {
                 await bot.sendMessage(chat_id, "⚠️ Role exists");
                 await bot.sendMessage(chat_id, `${existingUser.username} is in ${existingUser.team} as ${existingUser.role}`);
             } else {
-                const newUser = { username: username, team: team, role: role, language: language };
+                const newUser = {username: username, team: team, role: role, language: language};
                 await rolesCollection.insertOne(newUser);
                 await bot.sendMessage(chat_id, "✅ Added Successfully");
             }
         } else if (action === textKeys.UPDATEROLE) {
+            if (!admins.includes(user)) {
+                await bot.sendMessage(chat_id, "🚫 You do not have permission to perform this action");
+                return;
+            }
+
             let msg = text.split(',');
-	    if (msg.length !== 3) {
+            if (msg.length !== 3) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
                 return;
-	    }
+            }
             const username = msg[0].split(" ")[1].trim();
             const team = msg[1].trim();
             const role = msg[2].trim();
-        
-            const existingUser = await rolesCollection.findOne({ username: username });
+
+            const existingUser = await rolesCollection.findOne({username: username});
             if (existingUser) {
                 if (msg.length === 3) {
-                    await rolesCollection.updateOne({ username: username }, { $set: { team: team, role: role } });
+                    await rolesCollection.updateOne({username: username}, {$set: {team: team, role: role}});
                     await bot.sendMessage(chat_id, "✅ Updated Successfully");
                 } else {
                     await bot.sendMessage(chat_id, "❌ Invalid response retry!");
                 }
             } else {
-            await bot.sendMessage(chat_id, "⚠️ No user found");
+                await bot.sendMessage(chat_id, "⚠️ No user found");
             }
         } else if (action === textKeys.DELETEUSER) {
+            if (!admins.includes(user)) {
+                await bot.sendMessage(chat_id, "🚫 You do not have permission to perform this action");
+                return;
+            }
+
             let msg = text.split(" ");
-	    if (msg.length !== 2) {
+            if (msg.length !== 2) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
                 return;
-	    }
+            }
             const username = msg[1];
-	    const result = await rolesCollection.deleteOne({ username: username });
+            const result = await rolesCollection.deleteOne({username: username});
             if (result.deletedCount > 0) {
                 await bot.sendMessage(chat_id, `✅ user deleted`);
 
                 // delete all shifts for user
-                await scheduleCollection.deleteMany({ username: username });
+                await scheduleCollection.deleteMany({username: username});
             } else {
                 await bot.sendMessage(chat_id, `⚠️ No user found`);
             }
         } else if (action === textKeys.DELETESHIFT) {
+            if (!admins.includes(user)) {
+                await bot.sendMessage(chat_id, "🚫 You do not have permission to perform this action");
+                return;
+            }
+
             let msg = text.split(" ");
             if (msg.length !== 3) {
                 await bot.sendMessage(chat_id, "❌ Invalid format!");
                 return;
-	    }
-	    const username = msg[1].trim().split(",")[0].trim();
+            }
+            const username = msg[1].trim().split(",")[0].trim();
             const day = parseInt(msg[2].trim());
             const startDate = new Date(`${day} Nov 2023 00:00:00`)
             const endDate = new Date(`${day} Nov 2023 23:59:59`)
-            const shiftsForUser = await scheduleCollection.find({ username: username, startTime: { $lte: endDate }, endTime: { $gte: startDate } }).toArray();
+            const shiftsForUser = await scheduleCollection.find({
+                username: username,
+                startTime: {$lte: endDate},
+                endTime: {$gte: startDate}
+            }).toArray();
             if (shiftsForUser.length === 0) {
                 await bot.sendMessage(chat_id, `⚠️ No shifts found for ${username}`);
                 return;
             }
-            await scheduleCollection.deleteMany({ username: username, startTime: { $lte: endDate }, endTime: { $gte: startDate } });
+            await scheduleCollection.deleteMany({
+                username: username,
+                startTime: {$lte: endDate},
+                endTime: {$gte: startDate}
+            });
             await bot.sendMessage(chat_id, `✅ shifts for day ${day} deleted`);
         } else if (action === "/start" || action === "/help") {
             const keyboard = menuKeyboard("");
@@ -532,7 +650,7 @@ client.connect().then(() => {
         const channel = await connection.createChannel();
 
         await channel.assertExchange('reminders', 'x-delayed-message', {
-            arguments: { 'x-delayed-type': 'direct' }
+            arguments: {'x-delayed-type': 'direct'}
         });
 
         const queue = await channel.assertQueue('reminders', {
@@ -549,7 +667,7 @@ client.connect().then(() => {
             const shiftId = content.shiftId;
             const reminderMessage = content.message;
             // check database if user has shift at startTime (so as to avoid sending reminders for shifts that have been deleted)
-            const shift = await scheduleCollection.findOne({ _id: new ObjectId(shiftId) });
+            const shift = await scheduleCollection.findOne({_id: new ObjectId(shiftId)});
             if (shift)
                 await bot.sendMessage(chat_id, reminderMessage);
             else

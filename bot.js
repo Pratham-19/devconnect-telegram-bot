@@ -156,13 +156,13 @@ function menuKeyboard(keyboardName, username) {
                     "text": "Add commitment",
                     "callback_data": keys.ADDCOMMITMENT
                 }
-            ]
-                [
+            ],
+            [
                 {
                     "text": "Get commitments",
                     "callback_data": keys.FINDCOMMITMENT
                 }
-                ],
+            ],
             [
                 {
                     "text": "Find users by commitment & your team",
@@ -247,12 +247,12 @@ client.connect().then(() => {
         switch (action) {
             case menu.ROLE:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                keyboard = menuKeyboard(menu.ROLE);
+                keyboard = menuKeyboard(menu.ROLE, user);
                 await bot.sendMessage(opts.chat_id, 'What team function do you want to use?', {reply_markup: keyboard});
                 break;
             case menu.COMMITMENTS:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                keyboard = menuKeyboard(menu.COMMITMENTS);
+                keyboard = menuKeyboard(menu.COMMITMENTS, user);
                 await bot.sendMessage(opts.chat_id, 'What schedule function do you want to use?', {reply_markup: keyboard});
                 break;
             case keys.DELETECOMMITMENT:
@@ -656,7 +656,7 @@ client.connect().then(() => {
             });
             await bot.sendMessage(chat_id, `✅ commitments for day ${day} deleted`);
         } else if (action === "/start" || action === "/help") {
-            const keyboard = menuKeyboard("");
+            const keyboard = menuKeyboard("", user);
             await bot.sendMessage(chat_id, `Hey @${user},\nWhat can I help u with today?`, {reply_markup: keyboard})
         }
 

@@ -369,9 +369,9 @@ client.connect().then(() => {
             let commitments = await scheduleCollection.find({username: username}).toArray();
             if (commitments && commitments.length !== 0) {
                 await bot.sendMessage(chat_id, "--- Your Commitments ---");
-                commitments.forEach(async s =>
+                await Promise.all(commitments.map(async s =>
                     await bot.sendMessage(chat_id, `Start Time: ${s.startTime.toLocaleString()}\nEnd Time: ${s.endTime.toLocaleString()}`)
-                );
+                ));
                 await bot.sendMessage(chat_id, "   ---   ");
             } else {
                 await bot.sendMessage(chat_id, `No commitments found for ${username}`);
@@ -404,9 +404,9 @@ client.connect().then(() => {
 
                     if (users && users.length !== 0) {
                         await bot.sendMessage(chat_id, "--- Users ---");
-                        users.forEach(async u =>
+                        await Promise.all(users.map(async u =>
                             await bot.sendMessage(chat_id, `${u.username}`)
-                        );
+                        ));
                         await bot.sendMessage(chat_id, "   ---   ");
                     } else {
                         await bot.sendMessage(chat_id, `No users found for matching criteria`);
@@ -486,9 +486,9 @@ client.connect().then(() => {
 
                 if (users && users.length !== 0) {
                     await bot.sendMessage(chat_id, "--- Users ---");
-                    users.forEach(async u =>
+                    await Promise.all(users.map(async u =>
                         await bot.sendMessage(chat_id, `${u.username}`)
-                    );
+                    ));
                     await bot.sendMessage(chat_id, "   ---   ");
                 } else {
                     await bot.sendMessage(chat_id, `No users found for matching criteria`);

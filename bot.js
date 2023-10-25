@@ -202,16 +202,28 @@ function menuKeyboard(keyboardName, username) {
             "inline_keyboard": [
                 [
                     {
-                        "text": "Roles",
+                        "text": "Manage Roles",
                         "callback_data": menu.ROLE
                     }
                 ],
                 [
                     {
-                        "text": "Schedule",
+                        "text": "Manage Schedule",
                         "callback_data": menu.COMMITMENTS
                     }
                 ],
+                [
+                    {
+                        "text": "Check Main Schedule",
+                        "url": process.env.MAIN_SCHEDULE_URL
+                    }
+                ],
+                [
+                    {
+                        "text": "Check Volunteer HomePage",
+                        "url": process.env.VOLUNTEER_HOMEPAGE_URL
+                    }
+                ]
             ]
         }
     }

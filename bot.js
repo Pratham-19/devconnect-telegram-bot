@@ -83,11 +83,11 @@ const textKeys = {
 const commitments = {
     1: {
         startTime: "08:30:00",
-        endTime: "12:30:00"
+        endTime: "14:29:59"
     },
     2: {
-        startTime: "13:30:00",
-        endTime: "17:30:00"
+        startTime: "14:30:00",
+        endTime: "20:29:59"
     }
 }
 const days = {

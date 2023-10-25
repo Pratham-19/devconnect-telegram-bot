@@ -202,7 +202,7 @@ function menuKeyboard(keyboardName, username) {
             "inline_keyboard": [
                 [
                     {
-                        "text": "Manage Roles",
+                        "text": "Manage Teams",
                         "callback_data": menu.ROLE
                     }
                 ],

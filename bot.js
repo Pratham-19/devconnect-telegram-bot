@@ -248,7 +248,7 @@ client.connect().then(() => {
             case menu.ROLE:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 keyboard = menuKeyboard(menu.ROLE);
-                await bot.sendMessage(opts.chat_id, 'What role function do you want to use?', {reply_markup: keyboard});
+                await bot.sendMessage(opts.chat_id, 'What team function do you want to use?', {reply_markup: keyboard});
                 break;
             case menu.COMMITMENTS:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
@@ -275,11 +275,11 @@ client.connect().then(() => {
                 break;
             case keys.FINDUSERS:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to find users of your team on particular commitment,\n1 - morning commitment,\n2 - afternoon commitment\n\n${textKeys.FINDUSERS} username, day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDUSERS} @bugbyt, 14, 2`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to find users of your team on particular commitment,\n1 - morning commitment (8:30am-2:30pm),\n2 - afternoon commitment (2:30pm-8:30pm)\n\n${textKeys.FINDUSERS} username, day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDUSERS} @bugbyt, 14, 2`);
                 break;
             case keys.FINDALLCOMMITMENTUSERS:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to find users by commitment,\n1 - morning commitment,\n2 - afternoon commitment\n\n${textKeys.FINDALLCOMMITMENTUSERS} day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDALLCOMMITMENTUSERS} 14, 2`);
+                await bot.sendMessage(opts.chat_id, `Use the following command to find users by commitment,\n1 - morning commitment (8:30am-2:30pm),\n2 - afternoon commitment (2:30pm-8:30pm)\n\n${textKeys.FINDALLCOMMITMENTUSERS} day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDALLCOMMITMENTUSERS} 14, 2`);
                 break;
             case keys.FINDCOMMITMENT:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
@@ -318,7 +318,7 @@ client.connect().then(() => {
                 break;
             case keys.ADDCOMMITMENT:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                await bot.sendMessage(opts.chat_id, `Use the following command to add commitment,\n1 - morning commitment,\n2 - afternoon commitment\n\n${textKeys.ADDCOMMITMENT} username, day(13-20), Commitment (1,2)\n\ne.g ${textKeys.ADDCOMMITMENT} @bugbyt, 15, 2 `);
+                await bot.sendMessage(opts.chat_id, `Use the following command to add commitment,\n1 - morning commitment (8:30am-2:30pm),\n2 - afternoon commitment (2:30pm-8:30pm)\n\n${textKeys.ADDCOMMITMENT} username, day(13-20), Commitment (1,2)\n\ne.g ${textKeys.ADDCOMMITMENT} @bugbyt, 15, 2 `);
                 break;
             case keys.MYROLE:
                 await bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
@@ -524,7 +524,6 @@ client.connect().then(() => {
                             endTime: endTime
                         });
                         await bot.sendMessage(chat_id, "✅ Added Successfully");
-                        console.log("Inserted a new commitment with id: " + newCommitment.insertedId)
 
                         // create reminder for commitment 1 day before
                         const reminderMessage = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;

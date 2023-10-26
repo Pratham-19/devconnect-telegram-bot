@@ -71,14 +71,14 @@ const keys = {
 const textKeys = {
     GETROLE: "/roleof",
     GIVEROLE: "/give",
-    UPDATEROLE: "/updaterole",
-    DELETEUSER: "/delrole",
-    ADDCOMMITMENT: "/addcommitment",
-    DELETECOMMITMENT: "/delcommitment",
-    GETCOMMITMENT: "/getcommitment",
-    FINDUSERS: "/findteamusers",
-    FINDALLCOMMITMENTUSERS: "/findusers",
-    SWAPCOMMITMENT: "/swapcommitment",
+    UPDATEROLE: "/updateuser",
+    DELETEUSER: "/deluser",
+    ADDCOMMITMENT: "/add",
+    DELETECOMMITMENT: "/del",
+    GETCOMMITMENT: "/get",
+    FINDUSERS: "/findbyteam",
+    FINDALLCOMMITMENTUSERS: "/find",
+    SWAPCOMMITMENT: "/swap",
 }
 const commitments = {
     1: {
@@ -202,26 +202,26 @@ function menuKeyboard(keyboardName, username) {
             "inline_keyboard": [
                 [
                     {
-                        "text": "Manage Teams",
+                        "text": "Teams",
                         "callback_data": menu.ROLE
                     }
                 ],
                 [
                     {
-                        "text": "Manage Schedule",
+                        "text": "Schedule",
                         "callback_data": menu.COMMITMENTS
                     }
                 ],
                 [
                     {
-                        "text": "Check Main Schedule",
-                        "url": process.env.MAIN_SCHEDULE_URL
+                        "text": "Volunteer Home Page Notion",
+                        "url": process.env.VOLUNTEER_HOMEPAGE_URL
                     }
                 ],
                 [
                     {
-                        "text": "Check Volunteer HomePage",
-                        "url": process.env.VOLUNTEER_HOMEPAGE_URL
+                        "text": "Master Schedule Notion",
+                        "url": process.env.MAIN_SCHEDULE_URL
                     }
                 ]
             ]

@@ -223,6 +223,12 @@ function menuKeyboard(keyboardName, username) {
                         "text": "Master Schedule Notion",
                         "url": process.env.MAIN_SCHEDULE_URL
                     }
+                ],
+                [
+                    {
+                        "text": "Incident Response Form",
+                        "url": process.env.INCIDENT_RESPONSE_FORM_URL
+                    }
                 ]
             ]
         }

@@ -67,6 +67,7 @@ const keys = {
     FINDUSERS: "findUser",
     FINDALLCOMMITMENTUSERS: "findCommitmentUsers",
     SWAPCOMMITMENT: "swapCommitment",
+    BACK: "back"
 }
 const textKeys = {
     GETROLE: "/roleof",
@@ -146,6 +147,15 @@ function menuKeyboard(keyboardName, username) {
             );
         }
 
+        buttons.push(
+            [
+                {
+                    "text": "← Back",
+                    "callback_data": keys.BACK
+                }
+            ]
+        );
+
         return {
             "inline_keyboard": buttons
         };
@@ -193,6 +203,15 @@ function menuKeyboard(keyboardName, username) {
                 ]
             );
         }
+
+        buttons.push(
+            [
+                {
+                    "text": "← Back",
+                    "callback_data": keys.BACK
+                }
+            ]
+        );
 
         return {
             "inline_keyboard": buttons
@@ -246,18 +265,19 @@ client.connect().then(() => {
 
         switch (action) {
             case menu.ROLE:
-                bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                keyboard = menuKeyboard(menu.ROLE, user);
-                bot.sendMessage(opts.chat_id, 'What team function do you want to use?', {reply_markup: keyboard});
+                bot.editMessageText('What team function do you want to use?', opts)
+                    .then(() => {
+                        bot.editMessageReplyMarkup(menuKeyboard(menu.ROLE, user), opts);
+                    });
                 break;
             case menu.COMMITMENTS:
-                bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                keyboard = menuKeyboard(menu.COMMITMENTS, user);
-                bot.sendMessage(opts.chat_id, 'What schedule function do you want to use?', {reply_markup: keyboard});
+                bot.editMessageText('What schedule function do you want to use?', opts)
+                    .then(() => {
+                        bot.editMessageReplyMarkup(menuKeyboard(menu.COMMITMENTS, user), opts);
+                    });
                 break;
             case keys.DELETECOMMITMENT:
                 if (!admins.includes(user)) {
-                    bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                     bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
                     return;
                 }
@@ -266,7 +286,6 @@ client.connect().then(() => {
                 break;
             case keys.SWAPCOMMITMENT:
                 if (!admins.includes(user)) {
-                    bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                     bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
                     return;
                 }
@@ -287,7 +306,6 @@ client.connect().then(() => {
                 break;
             case keys.ADDROLE:
                 if (!admins.includes(user)) {
-                    bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                     bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
                     return;
                 }
@@ -300,7 +318,6 @@ client.connect().then(() => {
                 break;
             case keys.UPDATEROLE:
                 if (!admins.includes(user)) {
-                    bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                     bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
                     return;
                 }
@@ -309,7 +326,6 @@ client.connect().then(() => {
                 break;
             case keys.DELETEUSER:
                 if (!admins.includes(user)) {
-                    bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                     bot.sendMessage(opts.chat_id, "🚫 You do not have permission to perform this action");
                     return;
                 }
@@ -330,6 +346,12 @@ client.connect().then(() => {
                 } else {
                     bot.sendMessage(opts.chat_id, `No role assigned to @${user}`);
                 }
+                break;
+            case keys.BACK:
+                bot.editMessageText(`Hey @${user},\nWhat can I help u with today?`, opts)
+                    .then(() => {
+                        bot.editMessageReplyMarkup(menuKeyboard("", user), opts);
+                    });
                 break;
             default:
                 bot.editMessageReplyMarkup({inline_keyboard: []}, opts);

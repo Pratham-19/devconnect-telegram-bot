@@ -63,30 +63,26 @@ function generateDataTable(data, type) {
     <title>All ${type}</title>
     <style>
         body {
-            background-color: var(--tg-theme-bg-color);
+            background-color: #2e2e2e;
             font-family: "Lato", sans-serif;
+            font-size: 24px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            color: var(--tg-theme-text-color);
+            background-color: #252525;
+            color: #ffffff;
         }
         table, th, td {
-            border: 1px solid var(--tg-theme-text-color);
+            border: 1px solid #1e1e1e;
         }
         th, td {
             padding: 15px;
             text-align: left;
         }
         th {
-            color: var(--tg-theme-link-color);
-        }
-        a {
-            color: var(--tg-theme-link-color);
-        }
-        button {
-            background-color: var(--tg-theme-button-color);
-            color: var(--tg-theme-button-text-color);
+            font-weight: bold;
+            color: #6435b3;
         }
     </style>
 </head>
@@ -95,13 +91,15 @@ function generateDataTable(data, type) {
 `;
 
     if (type === "commitments"){
-        for (const commitment of data) {
-            html += `
+        html += `
         <tr>
             <th>Username</th>
             <th>Start Time</th>
             <th>End Time</th>
         </tr>
+`;
+        for (const commitment of data) {
+            html += `
         <tr>
             <td>${commitment.username}</td>
             <td>${commitment.startTime.toLocaleString()}</td>
@@ -110,14 +108,16 @@ function generateDataTable(data, type) {
 `;
         }
     } else if (type === "roles") {
-        for (const role of data) {
-            html += `
+        html += `
         <tr>
             <th>Username</th>
             <th>Team</th>
             <th>Role</th>
             <th>Language</th>
         </tr>
+`;
+        for (const role of data) {
+            html += `
         <tr>
             <td>${role.username}</td>
             <td>${role.team}</td>
@@ -214,7 +214,7 @@ function menuKeyboard(keyboardName, username) {
                 [
                     {
                         "text": "View all teams",
-                        "web_app": {"url": `${process.env.BASE_URL}/roles`}
+                        "url": `${process.env.BASE_URL}/roles`
                     }
                 ],
                 [
@@ -283,7 +283,7 @@ function menuKeyboard(keyboardName, username) {
                 [
                     {
                         "text": "View all commitments",
-                        "web_app": {"url": `${process.env.BASE_URL}/commitments`}
+                        "url": `${process.env.BASE_URL}/commitments`
                     }
                 ],
                 [
@@ -368,7 +368,7 @@ client.connect().then(() => {
 
         switch (action) {
             case menu.ROLE:
-                rolesCollection.find({}).toArray()   // generate roles table first before displaying menu
+                rolesCollection.find({}).sort({'team': 1}).toArray()   // generate roles table first before displaying menu
                     .then((roles) => {
                         fs.writeFileSync('roles.html', generateDataTable(roles, "roles"));
                         bot.editMessageText('What team function do you want to use?', opts)

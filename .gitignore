@@ -5,3 +5,5 @@ dist
 node_modules
 *.log
 credentials.json
+roles.html
+commitments.html

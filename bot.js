@@ -1,7 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const MongoClient = require('mongodb').MongoClient;
-const fs = require('fs');
 const express = require('express');
+const ejs = require('ejs');
 const amqp = require('amqplib');
 const {ObjectId} = require("mongodb");
 const token = process.env.BOT_TOKEN ?? "";
@@ -12,6 +12,8 @@ const client = new MongoClient(uri, {});
 
 const admins = process.env.ADMINS.split(",");
 const app = express();
+
+app.set('view engine', 'ejs');
 
 // helpers
 function calculateStartTime(day, commitment) {
@@ -44,8 +46,8 @@ async function createReminder(message, date, exchange = "reminders", routingKey 
 
     const messageBuffer = Buffer.from(message);
 
-    await channel.publish(exchange, routingKey, messageBuffer, {
-        headers: {'x-delay': delay}
+    channel.publish(exchange, routingKey, messageBuffer, {
+        headers: { 'x-delay': delay }
     });
 
     console.log(`Sent a message with a delay of ${delay} ms`);
@@ -53,89 +55,6 @@ async function createReminder(message, date, exchange = "reminders", routingKey 
     setTimeout(() => {
         connection.close();
     }, 500);
-}
-
-function generateDataTable(data, type) {
-    let html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>All ${type}</title>
-    <style>
-        body {
-            background-color: #2e2e2e;
-            font-family: "Lato", sans-serif;
-            font-size: 24px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #252525;
-            color: #ffffff;
-        }
-        table, th, td {
-            border: 1px solid #1e1e1e;
-        }
-        th, td {
-            padding: 15px;
-            text-align: left;
-        }
-        th {
-            font-weight: bold;
-            color: #6435b3;
-        }
-    </style>
-</head>
-<body>
-    <table>
-`;
-
-    if (type === "commitments"){
-        html += `
-        <tr>
-            <th>Username</th>
-            <th>Start Time</th>
-            <th>End Time</th>
-        </tr>
-`;
-        for (const commitment of data) {
-            html += `
-        <tr>
-            <td>${commitment.username}</td>
-            <td>${commitment.startTime.toLocaleString()}</td>
-            <td>${commitment.endTime.toLocaleString()}</td>
-        </tr>
-`;
-        }
-    } else if (type === "roles") {
-        html += `
-        <tr>
-            <th>Username</th>
-            <th>Team</th>
-            <th>Role</th>
-            <th>Language</th>
-        </tr>
-`;
-        for (const role of data) {
-            html += `
-        <tr>
-            <td>${role.username}</td>
-            <td>${role.team}</td>
-            <td>${role.role}</td>
-            <td>${role.language}</td>
-        </tr>
-`;
-        }
-    }
-
-    html += `
-    </table>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-</body>
-</html>
-`;
-
-    return html;
 }
 
 // constants
@@ -364,28 +283,19 @@ client.connect().then(() => {
             chat_id: msg.chat.id,
             message_id: msg.message_id,
         };
-        let keyboard;
 
         switch (action) {
             case menu.ROLE:
-                rolesCollection.find({}).sort({'team': 1}).toArray()   // generate roles table first before displaying menu
-                    .then((roles) => {
-                        fs.writeFileSync('roles.html', generateDataTable(roles, "roles"));
-                        bot.editMessageText('What team function do you want to use?', opts)
-                            .then(() => {
-                                bot.editMessageReplyMarkup(menuKeyboard(menu.ROLE, user), opts);
-                            });
-                    });
+                bot.editMessageText('What team function do you want to use?', opts)
+                .then(() => {
+                    bot.editMessageReplyMarkup(menuKeyboard(menu.ROLE, user), opts);
+                });
                 break;
             case menu.COMMITMENTS:
-                scheduleCollection.find({}).toArray()   // generate commitments table first before displaying menu
-                    .then((commitments) => {
-                        fs.writeFileSync('commitments.html', generateDataTable(commitments, "commitments"));
-                        bot.editMessageText('What schedule function do you want to use?', opts)
-                            .then(() => {
-                                bot.editMessageReplyMarkup(menuKeyboard(menu.COMMITMENTS, user), opts);
-                            });
-                    });
+                bot.editMessageText('What schedule function do you want to use?', opts)
+                .then(() => {
+                    bot.editMessageReplyMarkup(menuKeyboard(menu.COMMITMENTS, user), opts);
+                });
                 break;
             case keys.DELETECOMMITMENT:
                 if (!admins.includes(user)) {
@@ -829,18 +739,21 @@ client.connect().then(() => {
             noAck: true // auto ack
         });
     });
+
+    // endpoint to render roles table
+    app.get('/roles', async (req, res) => {
+        const roles = await rolesCollection.find().toArray();
+        res.render('roles', {roles: roles});
+    });
+
+    // endpoint to render commitments table
+    app.get('/commitments', async (req, res) => {
+        const commitments = await scheduleCollection.find().toArray();
+        res.render('commitments', {commitments: commitments});
+    });
 });
 
 // Start the server on port 3001
 app.listen(3001, () => {
     console.log('Server is running on port 3001');
-});
-
-// endpoint to render tables
-app.get('/roles', (req, res) => {
-    res.sendFile(__dirname + '/roles.html');
-});
-
-app.get('/commitments', (req, res) => {
-    res.sendFile(__dirname + '/commitments.html');
 });

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>DevConnect Helper v2 - All Commitments</title>
+        <style>
+            body {
+                background-color: #2e2e2e;
+                font-family: "Lato", sans-serif;
+                font-size: 24px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background-color: #252525;
+                color: #ffffff;
+            }
+            table, th, td {
+                border: 2px solid #1e1e1e;
+            }
+            th, td {
+                padding: 15px;
+                text-align: left;
+            }
+            th {
+                font-weight: bold;
+                color: #6435b3;
+            }
+        </style>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    </head>
+    <body>
+        <table>
+            <tr>
+                <th>Username</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+            </tr>
+            <% commitments.forEach(commitment => { %>
+                <tr>
+                    <td><%= commitment.username %></td>
+                    <td><%= commitment.startTime.toLocaleString() %></td>
+                    <td><%= commitment.endTime.toLocaleString() %></td>
+                </tr>
+            <% }); %>
+        </table>
+    </body>
+</html>

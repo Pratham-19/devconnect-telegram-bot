@@ -664,12 +664,12 @@ client.connect().then(() => {
 
                         const reminderMessage = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;
 
-                        // create reminder for commitment 1 week before
+                        // create reminder for commitment 3 days before
                         await createReminder(JSON.stringify({
                             chat_id: chat_id,
                             commitmentId: newCommitment.insertedId,
                             message: reminderMessage
-                        }), startTime - 604800000);
+                        }), startTime - 259200000);
 
                         // create reminder for commitment 1 day before
                         await createReminder(JSON.stringify({

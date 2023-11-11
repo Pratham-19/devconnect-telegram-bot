@@ -7,3 +7,5 @@ node_modules
 credentials.json
 roles.html
 commitments.html
+mongo-data
+rabbitmq-data

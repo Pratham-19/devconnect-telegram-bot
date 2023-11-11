@@ -24,7 +24,7 @@ services:
     image: mongo:7.0-jammy
     restart: unless-stopped
     volumes:
-      - mongo-data:/data/db
+      - ./mongo-data:/data/db
 
   message-bus:
     image: masstransit/rabbitmq:3
@@ -32,10 +32,5 @@ services:
     ports:
       - "15672:15672"
     volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-
-
-volumes:
-  mongo-data:
-  rabbitmq-data:
+      - ./rabbitmq-data:/var/lib/rabbitmq
   

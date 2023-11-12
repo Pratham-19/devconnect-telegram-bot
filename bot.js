@@ -173,12 +173,6 @@ function menuKeyboard(keyboardName, username) {
         let buttons = [
             [
                 {
-                    "text": "Add commitment",
-                    "callback_data": keys.ADDCOMMITMENT
-                }
-            ],
-            [
-                {
                     "text": "Get commitments",
                     "callback_data": keys.FINDCOMMITMENT
                 }
@@ -199,6 +193,12 @@ function menuKeyboard(keyboardName, username) {
 
         if (admins.includes(username)) {
             buttons.push(
+                [
+                    {
+                        "text": "Add commitment",
+                        "callback_data": keys.ADDCOMMITMENT
+                    }
+                ],
                 [
                     {
                         "text": "View all commitments",

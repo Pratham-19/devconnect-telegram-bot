@@ -68,8 +68,8 @@ const keys = {
     DELETEUSER: "delUser",
     DELETECOMMITMENT: "delCommitment",
     FINDCOMMITMENT: "findCommitment",
-    FINDUSERS: "findUser",
-    FINDALLCOMMITMENTUSERS: "findCommitmentUsers",
+    FINDBYTEAM: "findUsersByTeamAndCommitment",
+    FINDBYCOMMITMENT: "findUsersByCommitment",
     SWAPCOMMITMENT: "swapCommitment",
     BACK: "back"
 }
@@ -81,8 +81,8 @@ const textKeys = {
     ADDCOMMITMENT: "/add",
     DELETECOMMITMENT: "/del",
     GETCOMMITMENT: "/get",
-    FINDUSERS: "/findbyteam",
-    FINDALLCOMMITMENTUSERS: "/find",
+    FINDBYTEAM: "/findbyteam",
+    FINDBYCOMMITMENT: "/find",
     SWAPCOMMITMENT: "/swap",
 }
 const commitments = {
@@ -186,13 +186,13 @@ function menuKeyboard(keyboardName, username) {
             [
                 {
                     "text": "Find users by commitment & your team",
-                    "callback_data": keys.FINDUSERS
+                    "callback_data": keys.FINDBYTEAM
                 }
             ],
             [
                 {
                     "text": "Find users by commitments",
-                    "callback_data": keys.FINDALLCOMMITMENTUSERS
+                    "callback_data": keys.FINDBYCOMMITMENT
                 }
             ]
         ];
@@ -313,13 +313,13 @@ client.connect().then(() => {
                 bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
                 bot.sendMessage(opts.chat_id, `Use the following command to swap commitment with teammate\n\n${textKeys.SWAPCOMMITMENT} user1, user2, day1(13-20), day2(13-20)\n\ne.g ${textKeys.SWAPCOMMITMENT} @bugbyt, @kokocares, 14, 16\n${textKeys.SWAPCOMMITMENT} @bugbyt, @kokocares, 14, 14 (for same day swap)`);
                 break;
-            case keys.FINDUSERS:
+            case keys.FINDBYTEAM:
                 bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                bot.sendMessage(opts.chat_id, `Use the following command to find users of your team on particular commitment,\n1 - morning commitment (8:30am-2:30pm),\n2 - afternoon commitment (2:30pm-8:30pm)\n\n${textKeys.FINDUSERS} username, day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDUSERS} @bugbyt, 14, 2`);
+                bot.sendMessage(opts.chat_id, `Use the following command to find users of your team on particular commitment,\n1 - morning commitment (8:30am-2:30pm),\n2 - afternoon commitment (2:30pm-8:30pm)\n\n${textKeys.FINDBYTEAM} username, day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDBYTEAM} @bugbyt, 14, 2`);
                 break;
-            case keys.FINDALLCOMMITMENTUSERS:
+            case keys.FINDBYCOMMITMENT:
                 bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
-                bot.sendMessage(opts.chat_id, `Use the following command to find users by commitment,\n1 - morning commitment (8:30am-2:30pm),\n2 - afternoon commitment (2:30pm-8:30pm)\n\n${textKeys.FINDALLCOMMITMENTUSERS} day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDALLCOMMITMENTUSERS} 14, 2`);
+                bot.sendMessage(opts.chat_id, `Use the following command to find users by commitment,\n1 - morning commitment (8:30am-2:30pm),\n2 - afternoon commitment (2:30pm-8:30pm)\n\n${textKeys.FINDBYCOMMITMENT} day(13-20), commitment(1,2)\n\ne.g ${textKeys.FINDBYCOMMITMENT} 14, 2`);
                 break;
             case keys.FINDCOMMITMENT:
                 bot.editMessageReplyMarkup({inline_keyboard: []}, opts);
@@ -420,7 +420,7 @@ client.connect().then(() => {
             } else {
                 bot.sendMessage(chat_id, `No commitments found for ${username}`);
             }
-        } else if (action === textKeys.FINDUSERS) {
+        } else if (action === textKeys.FINDBYTEAM) {
             let msg = text.split(',');
 
             if (msg.length !== 3) {
@@ -430,32 +430,39 @@ client.connect().then(() => {
                 const day = days[msg[1].trim()];
                 const commitment = commitments[msg[2].trim()];
                 const role = await rolesCollection.findOne({username: username});
-                if (!role) {
-                    bot.sendMessage(chat_id, "⚠️ Assign a role to find users!");
-                } else {
-                    const team = role.team;
-                    const startTime = calculateStartTime(day, commitment);
-                    const endTime = calculateEndTime(day, commitment);
-                    let users = await rolesCollection.find({team: team}).toArray();
-                    users = users.filter(async u => {
-                        const commitments = await scheduleCollection.find({
-                            username: u.username,
-                            startTime: startTime,
-                            endTime: endTime
-                        }).toArray();
-                        return commitments.length !== 0;
-                    })
 
-                    if (users && users.length !== 0) {
-                        bot.sendMessage(chat_id, "--- Users ---");
-                        users.forEach((user, index) => {
-                            bot.sendMessage(chat_id, `${user.username}`);
-                            if (index === users.length - 1)
-                                bot.sendMessage(chat_id, "   ---   ");
-                        });
-                    } else {
-                        bot.sendMessage(chat_id, `No users found for matching criteria`);
-                    }
+                // validate input
+                if(!day || !commitment) {
+                    bot.sendMessage(chat_id, "❌ Invalid format!");
+                    return;
+                }
+                if (!role) {
+                    bot.sendMessage(chat_id, `⚠️ ${username} does not have a team!`);
+                    return;
+                }
+
+                const team = role.team;
+                const startTime = calculateStartTime(day, commitment);
+                const endTime = calculateEndTime(day, commitment);
+                let users = await rolesCollection.find({team: team}).toArray();
+                users = users.filter(async u => {
+                    const commitments = await scheduleCollection.find({
+                        username: u.username,
+                        startTime: startTime,
+                        endTime: endTime
+                    }).toArray();
+                    return commitments.length !== 0;
+                })
+
+                if (users && users.length !== 0) {
+                    bot.sendMessage(chat_id, "--- Users ---");
+                    users.forEach((user, index) => {
+                        bot.sendMessage(chat_id, `${user.username}`);
+                        if (index === users.length - 1)
+                            bot.sendMessage(chat_id, "   ---   ");
+                    });
+                } else {
+                    bot.sendMessage(chat_id, `No users found for matching criteria`);
                 }
             }
         } else if (action === textKeys.SWAPCOMMITMENT) {
@@ -517,7 +524,7 @@ client.connect().then(() => {
             } else {
                 bot.sendMessage(chat_id, "⚠️ No role assigned to user");
             }
-        } else if (action === textKeys.FINDALLCOMMITMENTUSERS) {
+        } else if (action === textKeys.FINDBYCOMMITMENT) {
             let msg = text.split(',');
 
             if (msg.length !== 2) {
@@ -525,6 +532,13 @@ client.connect().then(() => {
             } else {
                 const day = days[msg[0].split(" ")[1].trim()];
                 const commitment = commitments[msg[1].trim()];
+
+                // validate input
+                if(!day || !commitment) {
+                    bot.sendMessage(chat_id, "❌ Invalid format!");
+                    return;
+                }
+
                 const startTime = calculateStartTime(day, commitment);
                 const endTime = calculateEndTime(day, commitment);
                 let users = await scheduleCollection.find({startTime: startTime, endTime: endTime}).toArray();
@@ -550,51 +564,58 @@ client.connect().then(() => {
                 const day = days[msg[1].trim()];
                 const commitment = commitments[msg[2].trim()];
                 const role = await rolesCollection.findOne({username: username});
+
+                // validate input
+                if(!day || !commitment) {
+                    bot.sendMessage(chat_id, "❌ Invalid format!");
+                    return;
+                }
                 if (!role) {
-                    bot.sendMessage(chat_id, "⚠️ Assign a role to add commitment!");
+                    bot.sendMessage(chat_id, `⚠️ ${username} does not have a team!`);
+                    return;
+                }
+
+                const startTime = calculateStartTime(day, commitment);
+                const endTime = calculateEndTime(day, commitment);
+                const overlap = await scheduleCollection.findOne({
+                    username: username,
+                    startTime: {$lte: endTime},
+                    endTime: {$gte: startTime}
+                });
+                if (overlap) {
+                    bot.sendMessage(chat_id, "⚠️ Commitment already exists!");
                 } else {
-                    const startTime = calculateStartTime(day, commitment);
-                    const endTime = calculateEndTime(day, commitment);
-                    const overlap = await scheduleCollection.findOne({
+                    // add commitment to existing list of commitments for user
+                    const newCommitment = await scheduleCollection.insertOne({
                         username: username,
-                        startTime: {$lte: endTime},
-                        endTime: {$gte: startTime}
+                        startTime: startTime,
+                        endTime: endTime
                     });
-                    if (overlap) {
-                        bot.sendMessage(chat_id, "⚠️ Commitment already exists!");
-                    } else {
-                        // add commitment to existing list of commitments for user
-                        const newCommitment = await scheduleCollection.insertOne({
-                            username: username,
-                            startTime: startTime,
-                            endTime: endTime
-                        });
-                        bot.sendMessage(chat_id, "✅ Added Successfully");
+                    bot.sendMessage(chat_id, "✅ Added Successfully");
 
 
-                        const reminderMessage = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;
+                    const reminderMessage = `Hey ${username}, you have an upcoming commitment at ${startTime.toLocaleString()}`;
 
-                        // create reminder for commitment 3 days before
-                        await createReminder(JSON.stringify({
-                            chat_id: chat_id,
-                            commitmentId: newCommitment.insertedId,
-                            message: reminderMessage
-                        }), startTime - 259200000);
+                    // create reminder for commitment 3 days before
+                    await createReminder(JSON.stringify({
+                        chat_id: chat_id,
+                        commitmentId: newCommitment.insertedId,
+                        message: reminderMessage
+                    }), startTime - 259200000);
 
-                        // create reminder for commitment 1 day before
-                        await createReminder(JSON.stringify({
-                            chat_id: chat_id,
-                            commitmentId: newCommitment.insertedId,
-                            message: reminderMessage
-                        }), startTime - 86400000);
+                    // create reminder for commitment 1 day before
+                    await createReminder(JSON.stringify({
+                        chat_id: chat_id,
+                        commitmentId: newCommitment.insertedId,
+                        message: reminderMessage
+                    }), startTime - 86400000);
 
-                        // create reminder for commitment 1 hour before
-                        await createReminder(JSON.stringify({
-                            chat_id: chat_id,
-                            commitmentId: newCommitment.insertedId,
-                            message: reminderMessage
-                        }), startTime - 3600000);
-                    }
+                    // create reminder for commitment 1 hour before
+                    await createReminder(JSON.stringify({
+                        chat_id: chat_id,
+                        commitmentId: newCommitment.insertedId,
+                        message: reminderMessage
+                    }), startTime - 3600000);
                 }
             }
         } else if (action === textKeys.GIVEROLE) {
